@@ -8,18 +8,20 @@ from torch.utils.data import Dataset
 
 class ToyExperiment(Dataset):
 
-    def __init__(self, x, y, sdts, N=10):
+    def __init__(self, x, y, dts, sdts, N=10):
         x = x / x.max()
         self.p = []
         for i in range(y.shape[0]):
             self.p.append(extreme_points(y[i]))
 
         # concatenate gaussian extreme points with original x
-        self.p_blur = make_gt(x.shape[1:], np.vstack(self.p)).sum(0, keepdims=True)
+        self.p_blur = gaussian_convolve(x.shape[1:], np.vstack(self.p))\
+            .sum(0, keepdims=True)
         self.x = np.vstack((x, self.p_blur))
         self.x = torch.from_numpy(self.x).float()
 
         self.y = torch.from_numpy(y).sum(axis=0, keepdims=True)
+        self.dts = torch.from_numpy(dts).sum(axis=0, keepdims=True)
         self.sdts = torch.from_numpy(sdts).sum(axis=0, keepdims=True)
         self.patch_size = [128, 128]
         self.N = N
@@ -37,6 +39,7 @@ class ToyExperiment(Dataset):
         x = self.x[:, w_ix[None, :], h_ix[:, None]]
         return x,\
             self.y[:, w_ix[None, :], h_ix[:, None]],\
+            self.dts[:, w_ix[None, :], h_ix[:, None]],\
             self.sdts[:, w_ix[None, :], h_ix[:, None]]
 
 
@@ -68,7 +71,7 @@ def make_gaussian(size, center, sigma=10):
     return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
 
 
-def make_gt(dim, p, sigma=10):
+def gaussian_convolve(dim, p, sigma=10):
     """ Make the ground-truth for  landmark.
     dim: The shape of the underlying image
     p: A numpy array containing centers of all the points to draw heatmaps at

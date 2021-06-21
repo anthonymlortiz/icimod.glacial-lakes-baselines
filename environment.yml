@@ -1,0 +1,19 @@
+name: lakes
+channels:
+  - conda-forge
+  - menpo
+  - pytorch
+dependencies:
+  - geopandas
+  - ipykernel
+  - jupyterlab
+  - matplotlib
+  - numpy
+  - opencv
+  - rasterio
+  - scipy
+  - shapely
+  - pip
+  - pip:
+    - torch
+    - torchvision

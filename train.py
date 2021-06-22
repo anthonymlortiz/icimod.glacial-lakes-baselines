@@ -38,7 +38,7 @@ def LSE_loss(phi_T, gts, sdts, epsilon=-1, eta=100):
     return eta * balanced_bce(lse.Heaviside(phi_T, epsilon=epsilon), gts)
 
 
-def validate(loader, net, T, dt_max, epsilon):
+def validate(net, loader, T, dt_max, epsilon):
     net.eval()
     loss = 0
     for x, y, dt, sdt in loader:
@@ -49,19 +49,18 @@ def validate(loader, net, T, dt_max, epsilon):
             phi_T = lse.levelset_evolution(phi_0 + shift, energy, g, T, dt_max)
             loss += LSE_loss(phi_T, y, sdt, epsilon).item()
 
-    return loss
+    return loss / len(loader.dataset)
 
 
 def interpolater(x, s):
     return F.interpolate(x, size=s, mode="bilinear", align_corners=True)
 
 
-def train(loaders, net, optimizer, T=4, epsilon=-1, dt_max=30, epochs=40,
-          pretrain_epochs=20):
-    metrics = {"val": {"loss": []}, "train": {"loss": []}}
+def train(loaders, net, optimizer, writer, T=5, epsilon=-1, dt_max=30,
+          epochs=40, pretrain_epochs=20):
+    losses = np.zeros((epochs, 4)) # 3 heads and val
 
     for epoch in range(epochs):
-        train_loss = 0
         for x, y, dt, sdt in loaders["train"]:
             net.train()
 
@@ -75,24 +74,26 @@ def train(loaders, net, optimizer, T=4, epsilon=-1, dt_max=30, epochs=40,
             # either pretrain or end-to-end train the network
             if epoch < pretrain_epochs:
                 phi_T = lse.levelset_evolution(sdt + shift, energy, g, T, dt_max)
-                loss = mean_square_loss(phi_0, sdt) +\
-                    vector_field_loss(energy, vfs) +\
-                    LSE_loss(phi_T, y, sdt, epsilon)
+                li = [1e-3 * mean_square_loss(phi_0, sdt),
+                      vector_field_loss(energy, vfs),
+                      LSE_loss(phi_T, y, sdt, epsilon)]
             else:
                 phi_T = lse.levelset_evolution(phi_0 + shift, energy, g, T, dt_max)
-                loss = LSE_loss(phi_T, y, sdt, epsilon)
+                li = [0, 0, LSE_loss(phi_T, y, sdt, epsilon)]
 
             # take a gradient step
+            loss = sum(li)
             loss.backward()
             clip_grad_norm_(net.parameters(), 10)
             optimizer.step()
-            train_loss += loss.detach().item()
-        print(train_loss)
+            losses[epoch, :3] += [s.detach().item() for s in li]
 
-    # compute validation error
-    metrics["train"]["loss"].append(train_loss)
-    val_loss = validate(net, loaders["val"], T, dt_max, epsilon)
-    metrics["val"]["loss"].append(val_loss)
+        # compute validation error
+        losses[epoch, :] /= len(loaders["train"].dataset)
+        losses[epoch:, 3] = validate(net, loaders["val"], T, dt_max, epsilon)
+        print(f"epoch {epoch}: {losses[epoch, :]}")
+        [writer.add_scalar(f"loss/{s}", losses[epoch, s], epoch)
+         for s in range(losses.shape[1])]
 
     # save logging information
-    return net, optimizer
+    return net, optimizer, losses

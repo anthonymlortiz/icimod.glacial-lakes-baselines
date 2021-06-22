@@ -2,6 +2,9 @@ import numpy as np
 import torch
 import random
 import cv2
+import rasterio.mask
+import geopandas as gpd
+import shapely.geometry as sg
 from scipy import ndimage
 from torch.utils.data import Dataset
 
@@ -100,3 +103,36 @@ def sdt(y, dt_max=30):
     for i, yi in enumerate(y):
         dts[i], sdts[i] = sdt_i(yi, dt_max)
     return dts, sdts
+
+
+def mask(y, img):
+    extent = gpd.GeoDataFrame(
+        index=[0],
+        crs=y.crs,
+        geometry=[sg.box(*img.bounds)]
+    )
+    y_extent = gpd.overlay(y, extent)
+
+    masks, p = [], []
+    for geom in y_extent["geometry"]:
+        mask_i = rasterio.mask.mask(img, [geom])
+        masks.append(1 * np.any(mask_i[0] != 0, axis=0))
+        p.append(extreme_points(masks[-1]))
+
+    return np.stack(masks), p
+
+
+def preprocessor(img, y):
+    """
+    Helper for processing x, y for levelsets
+
+    Inputs
+    x: rasterio image object, with bounds
+    y: geopandas data.frame used to create training data masks
+    """
+    x = img.read()
+    y, extreme_polys = mask(y, img)
+    dist, signed_dist = sdt(y)
+    extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
+    y = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
+    return x.mean((1, 2)), x.std((1, 2)), np.stack(y)

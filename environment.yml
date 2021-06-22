@@ -13,6 +13,8 @@ dependencies:
   - rasterio
   - scipy
   - shapely
+  - tensorboard
+  - tensorboardx
   - pip
   - pip:
     - torch

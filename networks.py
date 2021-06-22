@@ -14,7 +14,6 @@ def backend_cnn(pth_model, input_channels=4, classifier="psp"):
     n_classes = (1, 2, 1)
     concat_dim = 128
     feature_dim = 4 * concat_dim
-    #feature_dim = 2048
     layers = (3, 4, 23, 3)
     dilations = (2, 4)
     strides = (2, 2, 2, 1, 1)
@@ -129,7 +128,6 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.classifier = classifier
         super(ResNet, self).__init__()
-        print(nInputChannels)
         self.conv1 = nn.Conv2d(nInputChannels, 64, kernel_size=7, stride=strides[0], padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64, affine=affine_par)
         for i in self.bn1.parameters():

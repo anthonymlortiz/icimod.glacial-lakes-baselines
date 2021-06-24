@@ -16,8 +16,6 @@ print(' '.join(sys.argv))
 # Define model according to opts
 if opts.model == "unet":
     model = UnetModel(opts)
-#elif opts.model == "fcn":
-#    model = FCN8()
 #elif opts.model == "hrnet":
 #    import yaml
 #    with open(opts.cfg) as file:

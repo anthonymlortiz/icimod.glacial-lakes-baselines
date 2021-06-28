@@ -51,6 +51,7 @@ def extreme_points(mask, pert=0):
         sel_id = ids[0][random.randint(0, len(ids[0]) - 1)]
         return [id_x[sel_id], id_y[sel_id]]
 
+
     # List of coordinates of the mask
     inds_y, inds_x = np.where(mask > 0.5)
 
@@ -115,9 +116,10 @@ def mask(y, img):
 
     masks, p = [], []
     for geom in y_extent["geometry"]:
-        mask_i = rasterio.mask.mask(img, [geom])
-        masks.append(1 * np.any(mask_i[0] != 0, axis=0))
-        p.append(extreme_points(masks[-1]))
+        mask_i, _, _ = rasterio.mask.raster_geometry_mask(img, [geom], invert=True)
+        if not np.all(mask_i == 0):
+            masks.append(mask_i)
+            p.append(extreme_points(mask_i))
 
     return np.stack(masks), p
 
@@ -135,4 +137,4 @@ def preprocessor(img, y):
     dist, signed_dist = sdt(y)
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
     y = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
-    return x.mean((1, 2)), x.std((1, 2)), np.stack(y)
+    return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), np.stack(y)

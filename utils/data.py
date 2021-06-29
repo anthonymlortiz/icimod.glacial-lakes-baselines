@@ -138,3 +138,17 @@ def preprocessor(img, y):
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
     y = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), np.stack(y)
+
+
+def save_raster(z, meta, transform, path):
+    meta.update({
+        "driver": "GTiff",
+        "height": z.shape[1],
+        "width": z.shape[2],
+        "count": z.shape[0],
+        "transform": transform,
+        "dtype": rasterio.float32
+    })
+
+    with rasterio.open(path, "w", **meta) as f:
+        f.write(z.astype(np.float32))

@@ -39,19 +39,11 @@ else:
     print("Option {} not supported. Available options: ce, wbce".format(opts.loss))
     raise NotImplementedError
 
-# Instantiate training framework
-if opts.loss != "lcfcn":
-    frame = TrainFramework(
-        model,
-        loss(),
-        opts
-    )
-else:
-    frame = TrainFramework(
-        model,
-        loss,
-        opts
-    )
+frame = TrainFramework(
+    model,
+    loss,
+    opts
+)
 
 if opts.overwrite:
     print("Warning: You have chosen to overwrite previous training directory for this experiment")

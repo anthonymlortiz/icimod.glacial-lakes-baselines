@@ -108,7 +108,7 @@ def train(framework, loaders, opts):
             else:
                 framework.model.eval()
 
-            for n_iter, (X, y) in enumerate(load_dataset(opts)[phase]):
+            for n_iter, (X, y) in enumerate(loaders[phase]):
                 y = torch.unsqueeze(y, dim=1).to(torch.float32)
                 if torch.cuda.is_available():
                     X = X.cuda().float()

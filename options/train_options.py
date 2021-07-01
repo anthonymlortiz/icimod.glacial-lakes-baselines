@@ -9,6 +9,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--optimizer', type=str, default='adam', help='optimizer for training model [adam | sgd]')
         parser.add_argument('--beta1', type=float, default=0.9, help='momentum term of adam')
         parser.add_argument('--beta2', type=float, default=0.999, help='momentum term of adam')
+        parser.add_argument('--label_channels', type=list, default=[0], help='Number of channel in the input images')
      
         parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
         parser.add_argument('--chip_size', type=int, default=512, help='Size for each training patch')

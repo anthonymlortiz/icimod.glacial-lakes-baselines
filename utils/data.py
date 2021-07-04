@@ -2,6 +2,9 @@ import numpy as np
 import torch
 import random
 import cv2
+import rasterio.mask
+import geopandas as gpd
+import shapely.geometry as sg
 from scipy import ndimage
 from torch.utils.data import Dataset
 
@@ -47,6 +50,7 @@ def extreme_points(mask, pert=0):
     def find_point(id_x, id_y, ids):
         sel_id = ids[0][random.randint(0, len(ids[0]) - 1)]
         return [id_x[sel_id], id_y[sel_id]]
+
 
     # List of coordinates of the mask
     inds_y, inds_x = np.where(mask > 0.5)
@@ -100,3 +104,51 @@ def sdt(y, dt_max=30):
     for i, yi in enumerate(y):
         dts[i], sdts[i] = sdt_i(yi, dt_max)
     return dts, sdts
+
+
+def mask(y, img):
+    extent = gpd.GeoDataFrame(
+        index=[0],
+        crs=y.crs,
+        geometry=[sg.box(*img.bounds)]
+    )
+    y_extent = gpd.overlay(y, extent)
+
+    masks, p = [], []
+    for geom in y_extent["geometry"]:
+        mask_i, _, _ = rasterio.mask.raster_geometry_mask(img, [geom], invert=True)
+        if not np.all(mask_i == 0):
+            masks.append(mask_i)
+            p.append(extreme_points(mask_i))
+
+    return np.stack(masks), p
+
+
+def preprocessor(img, y):
+    """
+    Helper for processing x, y for levelsets
+
+    Inputs
+    x: rasterio image object, with bounds
+    y: geopandas data.frame used to create training data masks
+    """
+    x = img.read()
+    y, extreme_polys = mask(y, img)
+    dist, signed_dist = sdt(y)
+    extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
+    y = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
+    return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), np.stack(y)
+
+
+def save_raster(z, meta, transform, path):
+    meta.update({
+        "driver": "GTiff",
+        "height": z.shape[1],
+        "width": z.shape[2],
+        "count": z.shape[0],
+        "transform": transform,
+        "dtype": rasterio.float32
+    })
+
+    with rasterio.open(path, "w", **meta) as f:
+        f.write(z.astype(np.float32))

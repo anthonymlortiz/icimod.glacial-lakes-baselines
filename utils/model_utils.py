@@ -114,6 +114,19 @@ def save_loss(train_loss, val_loss, save_dir, name='loss_plots'):
     plt.savefig(save_dir + name + '.png')
 
 
+def save_inferences(model, loader, out_dir):
+    ix = 0
+    model.eval()
+
+    with torch.no_grad():
+        for x, _ in loader:
+            y_hat = model(x.to(device))
+            for i in range(y_hat.shape[0]):
+                out_path = out_dir / f"{dataset.ids[ix]}-pred.tif"
+                dt.save_raster(y_hat[i], x.meta, x.transform, out_path)
+                ix += 1
+
+
 # Function to load model options
 def load_options(file_name):
     if file_name.endswith(".pkl"):

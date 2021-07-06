@@ -54,13 +54,19 @@ class Algorithm:
         outputs = self.model(x)
         return y, outputs
 
-    def objective(self, y, outputs):
-        return self.loss(outputs, y)
+    def process_output(self, outputs):
+        """Convert output to y_pred"""
+        return outputs
 
     def evaluate(self, batch):
         y, outputs = self.process_batch(batch)
-        objective = self.objective(y, outputs).item()
-        return y, outputs, objective
+        objective = self.loss(y, outputs).item()
+        y_pred = self.process_outputs(outputs)
+
+        result = {}
+        for k, metric in self.metrics:
+            result[k] = metric(y_pred, y)
+        return result, objective
 
     def update(self, batch):
         y, outputs = self.process_batch(batch)
@@ -81,6 +87,6 @@ class Algorithm:
     def update_log(self, y, outputs, objective):
         pass
 
-    def save_model(self, out_dir, suffix="best"):
+    def save_model(self, suffix="best"):
         fname = f"{self.opts.id}-{suffix}.pth"
-        torch.save(self.model.state_dict(), Path(out_dir) / fname)
+        torch.save(self.model.state_dict(), Path(self.opts.out_dir) / fname)

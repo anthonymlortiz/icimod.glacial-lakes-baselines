@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+import sys
+sys.path.append("..")
+from utils import lse
 
 
 class MulticlassCrossEntropy(nn.Module):
@@ -11,6 +14,7 @@ class MulticlassCrossEntropy(nn.Module):
         y_pred: Model predictions
         y_true: Ground truth labels
     """
+
     def __init__(self, batch=True):
         super(MulticlassCrossEntropy, self).__init__()
         self.batch = batch
@@ -66,6 +70,7 @@ class WeightedBCELoss(nn.Module):
     Args:
         nn ([type]): [description]
     """
+
     def __init__(self, weights=[0.2, 0.8], batch=True):
         super(WeightedBCELoss, self).__init__()
         self.batch = batch
@@ -83,6 +88,7 @@ class DiceBCELoss(nn.Module):
     Args:
         nn ([type]): [description]
     """
+
     def __init__(self, batch=True):
         super(DiceBCELoss, self).__init__()
         self.batch = batch
@@ -117,6 +123,7 @@ class DiceLoss(nn.Module):
     Args:
         nn ([type]): [description]
     """
+
     def __init__(self, batch=True):
         super(DiceLoss, self).__init__()
         self.batch = batch
@@ -146,11 +153,11 @@ class DELSELoss(nn.module):
     """Loss used in DELSE
     """
 
-    def __init__(self, epsilon=1)
+    def __init__(self, epsilon=1):
         super(self).__init__()
         self.epsilon = epsilon
 
-    def __call__(self, phi_0, sdt, energy, vfs, phi_T, y):
+    def __call__(self, y, phi_0, sdt, energy, vfs, phi_T):
         return [1e-3 * lse.mean_square_loss(phi_0, sdt),
                 lse.vector_field_loss(energy, vfs),
                 lse.LSE_loss(phi_T, y, sdt, self.epsilon)]

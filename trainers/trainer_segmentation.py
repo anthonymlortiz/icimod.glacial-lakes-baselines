@@ -9,6 +9,7 @@ from utils.model_utils import save_loss, CheckpointSaver
 from data.dataloader import load_dataset
 import time
 import tqdm
+import pandas as pd
 
 
 def train(framework, loaders, opts):
@@ -208,11 +209,11 @@ def validate(algorithm, dataset, writer, epoch, opts):
     algorithm.eval()
     metrics = []
     for batch in iterator:
-        y, y_pred, objective = algorithm.evaluate(batch)
+        y, y_pred, _ = algorithm.evaluate(batch)
         metrics.append(dataset.metrics(y, y_pred))
 
-    metrics = np.stack(metrics)
-    return {"avg": np.mean(metrics, axis=0), "sample": metrics}
+    metrics = pd.DataFrame(metrics)
+    return {"avg": metrics.mean(axis=0), "batch": metrics}
 
 
 def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
@@ -225,4 +226,4 @@ def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
             best_val = metrics["avg"][opts.val_metric]
             algorithm.save_model(epoch, opts)
         elif epoch % opts.save_epoch == 0:
-            algorithm.save_model(epoch, opts)
+            algorithm.save_model(epoch, opts, str(epoch))

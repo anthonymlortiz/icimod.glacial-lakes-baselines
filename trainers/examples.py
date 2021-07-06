@@ -25,13 +25,10 @@ class DelseAlgo(Algorithm):
             sdt += 10 * np.random.rand() - 5
 
         phi_T = lse.levelset_evolution(sdt, energy, g, self.T, self.dt_max)
-        outputs = {"y_pred": phi_T, "vfs": vfs, "energy": energy, "g": g,
-                   "sdt": sdt, "phi_0": phi_0}
-        return y, outputs
+        return y, [phi_0, sdt, energy, vfs, phi_T]
 
     def objective(self, y, outputs):
-        li = self.loss(outputs["phi_0"], outputs["sdt"], outputs["energy"],
-                       outputs["vfs"], outputs["y_pred"], y)
+        li = self.loss(y, **outputs)
         if self.epoch > self.pretrain_epochs:
             li[:2] = 0
 
@@ -41,7 +38,5 @@ class DelseAlgo(Algorithm):
         self.epoch += 1
         super().update(self, batch)
 
-    def evaluate(self, batch):
-        y, outputs = self.process_batch(batch)
-        objective = self.objective(y, outputs).item()
-        return y, outputs["y_pred"], objective
+    def process_output(self, outputs):
+        return outputs[-1]

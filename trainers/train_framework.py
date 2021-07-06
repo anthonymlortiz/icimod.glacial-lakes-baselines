@@ -40,33 +40,21 @@ class TrainFramework:
 
 class Algorithm:
 
-    def __init__(self, model, loss, metrics, opts):
+    def __init__(self, model, loss, optimizer, metrics, opts):
         self.model = model
         self.loss = loss
+        self.optimizer = optimizer
         self.metrics = metrics
         self.device = opts.device
         self.max_grad_norm = opts.max_grad_norm
 
     def process_batch(self, batch):
-        x, y = batch
-        x = x.to(self.device)
-        y = y.to(self.device)
+        x, y = [s.to(self.device) for s in batch]
         outputs = self.model(x)
         return y, outputs
 
-    def process_output(self, outputs):
-        """Convert output to y_pred"""
-        return outputs
-
-    def evaluate(self, batch):
-        y, outputs = self.process_batch(batch)
-        objective = self.loss(y, outputs).item()
-        y_pred = self.process_outputs(outputs)
-
-        result = {}
-        for k, metric in self.metrics:
-            result[k] = metric(y_pred, y)
-        return result, objective
+    def objective(self, y, outputs):
+        return self.loss(y, outputs)
 
     def update(self, batch):
         y, outputs = self.process_batch(batch)
@@ -75,7 +63,7 @@ class Algorithm:
 
     def _update(self, y, outputs):
         objective = self.objective(y, outputs)
-        self.model.zero_grad()
+        self.optimizer.zero_grad()
         objective.backward()
 
         if self.max_grad_norm:
@@ -84,9 +72,6 @@ class Algorithm:
         self.optimizer.step()
         return objective.item()
 
-    def update_log(self, y, outputs, objective):
-        pass
-
-    def save_model(self, suffix="best"):
+    def save(self, suffix="best"):
         fname = f"{self.opts.id}-{suffix}.pth"
         torch.save(self.model.state_dict(), Path(self.opts.out_dir) / fname)

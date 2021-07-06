@@ -6,8 +6,6 @@ from utils import metrics
 from torch.optim import lr_scheduler
 import numpy as np
 from utils.model_utils import save_loss, CheckpointSaver
-from data.dataloader import load_dataset
-import time
 import tqdm
 import pandas as pd
 
@@ -196,7 +194,7 @@ def train(framework, loaders, opts):
     return framework, train_history, val_history
 
 
-def train_epoch(algorithm, dataset, epoch, writer, opts):
+def train_epoch(algorithm, dataset):
     iterator = tqdm(dataset)
     algorithm.train()
     for batch in iterator:
@@ -208,6 +206,21 @@ def evaluate(model_fun, batch, metrics, device):
     y_pred, outputs = model_fun(x)
     metrics = {k: m(y_pred, y) for k, m in metrics.items()}
     return metrics, y, outputs
+
+
+def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
+    for epoch in range(epoch_start, opts.n_epochs):
+        writer.add_text("Starting Epoch {epoch}:\n", epoch, time())
+        train_epoch(algorithm, datasets["train"], writer, epoch, opts)
+
+        writer.add_text("Starting validation", epoch, time())
+        metrics = {
+            "val": validate(algorithm, datasets["val"]),
+            "train": validate(algorithm, datasets["train"])
+        }
+
+        log_epoch(writer, epoch, metrics)
+        best_val = save_if_needed(algorithm, metrics, best_val, epoch, opts)
 
 
 def validate(algorithm, dataset):
@@ -232,17 +245,18 @@ def validate(algorithm, dataset):
     }
 
 
-def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
-    for epoch in range(epoch_start, opts.n_epochs):
-        writer.add_text("Starting Epoch {epoch}:\n", epoch, time.time())
-        train_epoch(algorithm, datasets["train"], writer, epoch, opts)
-        metrics = {
-            "val": validate(algorithm, datasets["val"]),
-            "train": validate(algorithm, datasets["train"])
-        }
+def log_epoch(writer, epoch, metrics):
+    writer.add_text("Completed validation", epoch, time())
+    for split in ["val", "train"]:
+        writer.add_scalar("Obj/{split}", metrics[split]["objective"], epoch)
+        for m in metrics[split]["avg"].index:
+            writer.add_scalar(f"{m}/{split}", metrics[split]["avg"][m], epoch)
 
-        if best_val is None or metrics[opts.val_metric] < best_val:
-            best_val = metrics["val"]["avg"][opts.val_metric]
-            algorithm.save(epoch, opts)
-        elif epoch % opts.save_epoch == 0:
-            algorithm.save(epoch, opts, str(epoch))
+
+def save_if_needed(algorithm, metrics, best_val, epoch, opts):
+    if best_val is None or metrics[opts.val_metric] < best_val:
+        best_val = metrics["val"]["avg"][opts.val_metric]
+        algorithm.save(epoch, opts)
+    elif epoch % opts.save_epoch == 0:
+        algorithm.save(epoch, opts, str(epoch))
+    return best_val

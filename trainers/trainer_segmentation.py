@@ -200,30 +200,49 @@ def train_epoch(algorithm, dataset, epoch, writer, opts):
     iterator = tqdm(dataset)
     algorithm.train()
     for batch in iterator:
-        y, outputs, objective = algorithm.update(batch)
-        algorithm.update_log(writer, y, outputs, objective)
+        algorithm.update(batch)
 
 
-def validate(algorithm, dataset, writer, epoch, opts):
+def evaluate(model_fun, batch, metrics, device):
+    x, y = [s.to(device) for s in batch]
+    y_pred, outputs = model_fun(x)
+    metrics = {k: m(y_pred, y) for k, m in metrics.items()}
+    return metrics, y, outputs
+
+
+def validate(algorithm, dataset):
     iterator = tqdm(dataset)
     algorithm.eval()
-    metrics = []
+    metrics, objective = [], []
     for batch in iterator:
-        y, y_pred, _ = algorithm.evaluate(batch)
-        metrics.append(dataset.metrics(y, y_pred))
+        metrics_, y, outputs = evaluate(
+                algorithm.model.infer,
+                batch,
+                metrics,
+                algorithm.device
+            )
+        objective.append(algorithm.objective(y, outputs))
+        metrics.append(metrics_)
 
     metrics = pd.DataFrame(metrics)
-    return {"avg": metrics.mean(axis=0), "batch": metrics}
+    return {
+        "avg": metrics.mean(axis=0),
+        "sample": metrics,
+        "objective": np.mean(objective)
+    }
 
 
 def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
     for epoch in range(epoch_start, opts.n_epochs):
         writer.add_text("Starting Epoch {epoch}:\n", epoch, time.time())
         train_epoch(algorithm, datasets["train"], writer, epoch, opts)
-        metrics = validate(algorithm, datasets["val"], writer, epoch, opts)
+        metrics = {
+            "val": validate(algorithm, datasets["val"]),
+            "train": validate(algorithm, datasets["train"])
+        }
 
         if best_val is None or metrics[opts.val_metric] < best_val:
-            best_val = metrics["avg"][opts.val_metric]
-            algorithm.save_model(epoch, opts)
+            best_val = metrics["val"]["avg"][opts.val_metric]
+            algorithm.save(epoch, opts)
         elif epoch % opts.save_epoch == 0:
-            algorithm.save_model(epoch, opts, str(epoch))
+            algorithm.save(epoch, opts, str(epoch))

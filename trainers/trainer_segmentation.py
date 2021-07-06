@@ -4,8 +4,11 @@ import os, sys
 from time import time
 from utils import metrics
 from torch.optim import lr_scheduler
+import numpy as np
 from utils.model_utils import save_loss, CheckpointSaver
 from data.dataloader import load_dataset
+import time
+import tqdm
 
 
 def train(framework, loaders, opts):
@@ -117,7 +120,7 @@ def train(framework, loaders, opts):
 
                 with torch.set_grad_enabled(phase == 'train'):
                     y_pred = framework.model.forward(X)
-                    
+
                     loss = framework.loss(y_pred, torch.squeeze(y, 1).long())
                     if phase == 'train':
                         loss.backward()
@@ -190,3 +193,36 @@ def train(framework, loaders, opts):
     save_loss(train_history['loss'], val_history['loss'], backup_dir, "loss_figure")
     save_loss(train_history['loss'], val_history['loss'], train_dir, "loss_figure")
     return framework, train_history, val_history
+
+
+def train_epoch(algorithm, dataset, epoch, writer, opts):
+    iterator = tqdm(dataset)
+    algorithm.train()
+    for batch in iterator:
+        y, outputs, objective = algorithm.update(batch)
+        algorithm.update_log(writer, y, outputs, objective)
+
+
+def validate(algorithm, dataset, writer, epoch, opts):
+    iterator = tqdm(dataset)
+    algorithm.eval()
+    metrics = []
+    for batch in iterator:
+        y, y_pred, objective = algorithm.evaluate(batch)
+        metrics.append(dataset.metrics(y, y_pred))
+
+    metrics = np.stack(metrics)
+    return {"avg": np.mean(metrics, axis=0), "sample": metrics}
+
+
+def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
+    for epoch in range(epoch_start, opts.n_epochs):
+        writer.add_text("Starting Epoch {epoch}:\n", epoch, time.time())
+        train_epoch(algorithm, datasets["train"], writer, epoch, opts)
+        metrics = validate(algorithm, datasets["val"], writer, epoch, opts)
+
+        if best_val is None or metrics[opts.val_metric] < best_val:
+            best_val = metrics["avg"][opts.val_metric]
+            algorithm.save_model(epoch, opts)
+        elif epoch % opts.save_epoch == 0:
+            algorithm.save_model(epoch, opts)

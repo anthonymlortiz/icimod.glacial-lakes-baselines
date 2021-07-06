@@ -1,4 +1,6 @@
 import torch
+from torch.nn.utils import clip_grad_norm_
+from pathlib import Path
 
 
 class TrainFramework:
@@ -14,7 +16,7 @@ class TrainFramework:
             self.optimizer = torch.optim.SGD(params=self.model.parameters(), lr=self.lr,
                                 momentum=0.9,
                                 weight_decay=1e-5)
-        else: 
+        else:
             print("Option {} not supported. Available options: adam, sgd".format(opts.optimizer))
             raise NotImplementedError
 
@@ -34,3 +36,51 @@ class TrainFramework:
 
     def save(self, path):
         torch.save(self.model.state_dict(), path)
+
+
+class Algorithm:
+
+    def __init__(self, model, loss, metrics, opts):
+        self.model = model
+        self.loss = loss
+        self.metrics = metrics
+        self.device = opts.device
+        self.max_grad_norm = opts.max_grad_norm
+
+    def process_batch(self, batch):
+        x, y = batch
+        x = x.to(self.device)
+        y = y.to(self.device)
+        outputs = self.model(x)
+        return y, outputs
+
+    def objective(self, y, outputs):
+        return self.loss(outputs, y)
+
+    def evaluate(self, batch):
+        y, outputs = self.process_batch(batch)
+        objective = self.objective(y, outputs).item()
+        return y, outputs, objective
+
+    def update(self, batch):
+        y, outputs = self.process_batch(batch)
+        objective = self._update(y, outputs)
+        return y, outputs, objective
+
+    def _update(self, y, outputs):
+        objective = self.objective(y, outputs)
+        self.model.zero_grad()
+        objective.backward()
+
+        if self.max_grad_norm:
+            clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+
+        self.optimizer.step()
+        return objective.item()
+
+    def update_log(self, y, outputs, objective):
+        pass
+
+    def save_model(self, out_dir, suffix="best"):
+        fname = f"{self.opts.id}-{suffix}.pth"
+        torch.save(self.model.state_dict(), Path(out_dir) / fname)

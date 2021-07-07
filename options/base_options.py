@@ -15,13 +15,13 @@ class BaseOptions():
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         parser.add_argument('--save_dir', type=str, default='/datadrive/results/save/', help='latest models are saved here')
         parser.add_argument('--backup_dir', type=str, default='/datadrive/results/backup/', help='best models are saved here')
-        parser.add_argument('--data_dir', type=str, default='bing/', help='directory where datasets are located')
+        parser.add_argument('--data_dir', type=str, default='/datadrive/snake/lakes', help='directory where datasets are located')
         parser.add_argument('--init_type', type=str, default='none', help='which model to use [none | normal | xavier | xavier_uniform | kaiming | orthogonal]')
-        parser.add_argument('--model', type=str, default='fcn', help='which initialization method to use [unet | fcn | hrnet]')
+        parser.add_argument('--model', type=str, default='unet', help='which initialization method to use [unet | delse ]')
         parser.add_argument('--phase', type=str, default='train', help='model phase [train | test]')
         parser.add_argument('--verbose', action='store_true', help='if set, print info while training')
         parser.add_argument('--overwrite', action='store_true', default=False, help='if set, overwrite training dir')
-        parser.add_argument('--dataset', type=str, default='bing', help='model phase [bing | landsat | maxar]')
+        parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
 
 
         # input/output settings
@@ -86,7 +86,7 @@ class BaseOptions():
                 if v != default:
                     comment = '\t[default: %s]' % str(default)
                 opt_file.write('{:>25}: {:<30}{}\n'.format(str(k), str(v), comment))
-        
+
         with open(file_name + '.pkl', 'wb') as opt_file:
             pickle.dump(opt, opt_file)
 
@@ -102,7 +102,7 @@ class BaseOptions():
         file_name = self.option_file_path(opt, makedir=False)
         new_opt = pickle.load(open(file_name + '.pkl', 'rb'))
         return new_opt
-    
+
     def parse(self, save=False):
 
         opt = self.gather_options()
@@ -111,7 +111,7 @@ class BaseOptions():
         self.print_options(opt)
         if opt.isTrain:
             self.save_options(opt)
-        
+
         # set gpu ids
         str_ids = opt.gpu_ids.split(',')
         opt.gpu_ids = []

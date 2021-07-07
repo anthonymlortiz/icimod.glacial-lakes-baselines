@@ -3,18 +3,23 @@ channels:
   - conda-forge
   - menpo
   - pytorch
+  - anaconda
 dependencies:
+  - python=3.8
   - geopandas
   - ipykernel
   - jupyterlab
+  - libgcc==5.2.0
   - matplotlib
   - numpy
   - opencv
+  - pandas
   - rasterio
   - scipy
   - shapely
   - tensorboard
   - tensorboardx
+  - tqdm
   - pip
   - pip:
     - torch

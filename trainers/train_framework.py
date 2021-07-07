@@ -45,7 +45,7 @@ class Algorithm:
         self.loss = loss
         self.optimizer = optimizer
         self.metrics = metrics
-        self.device = opts.device
+        self.device = torch.device(opts.device)
         self.max_grad_norm = opts.max_grad_norm
 
     def process_batch(self, batch):
@@ -54,7 +54,7 @@ class Algorithm:
         return y, outputs
 
     def objective(self, y, outputs):
-        return self.loss(y, outputs)
+        return self.loss(outputs, y)
 
     def update(self, batch):
         y, outputs = self.process_batch(batch)

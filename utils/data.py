@@ -114,6 +114,7 @@ def mask(y, img):
     )
     y_extent = gpd.overlay(y, extent)
 
+    # build the masks, one polygon at a time
     masks, p = [], []
     for geom in y_extent["geometry"]:
         mask_i, _, _ = rasterio.mask.raster_geometry_mask(img, [geom], invert=True)
@@ -121,7 +122,12 @@ def mask(y, img):
             masks.append(mask_i)
             p.append(extreme_points(mask_i))
 
-    return np.stack(masks), p
+    # crop to the same shape as img, if slightly off
+    masks = np.stack(masks)
+    if masks.shape[1] != img.meta["height"] or masks.shape[2] != img.meta["width"]:
+        masks = masks[:, :img.meta["height"], :img.meta["width"]]
+
+    return masks, p
 
 
 def preprocessor(img, y):

@@ -78,7 +78,7 @@ class WeightedBCELoss(nn.Module):
         self.bce_loss = nn.CrossEntropyLoss(weight=self.class_weights)
 
     def __call__(self, y_pred, y_true):
-        loss = self.bce_loss(y_pred, y_true)
+        loss = self.bce_loss(y_pred, y_true.long())
         return loss
 
 
@@ -149,7 +149,7 @@ class DiceLoss(nn.Module):
         return self.soft_dice_loss(y_pred, y_true)
 
 
-class DELSELoss(nn.module):
+class DELSELoss(nn.Module):
     """Loss used in DELSE
     """
 

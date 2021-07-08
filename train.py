@@ -1,14 +1,17 @@
 import sys, shutil, os
 import torch
+import utils.metrics as mt
 from trainers import trainer_segmentation
 from trainers.train_framework import Algorithm
 from models.losses import MulticlassCrossEntropy, WeightedBCELoss
 from options.train_options import TrainOptions
 from data.dataloader import load_dataset
 from models.unet import UnetModel
-from utils.metrics import mean_IoU
 from tensorboardX import SummaryWriter
 from torch import optim
+from pathlib import Path
+from warnings import warn, filterwarnings
+filterwarnings("ignore", category=UserWarning)
 
 
 # parse options
@@ -30,14 +33,20 @@ elif opts.loss == "wbce":
 else:
     assert NotImplementedError, f"Option {opts.loss} not supported. Available options: ce, wbce"
 
+# Setup optimizer according to opts
+if opts.optimizer == "adam":
+    optimizer = torch.optim.Adam(model.parameters(), lr=opts.lr, betas=(opts.beta1, opts.beta2))
+if opts.optimizer == "sgd":
+    optimizer = torch.optim.SGD(model.parameters(), lr=opts.lr, momentum=0.9)
+
+
 if opts.overwrite:
-    print("Warning: You have chosen to overwrite previous training directory for this experiment")
+    warn("You have chosen to overwrite previous training directory for this experiment")
     shutil.rmtree(opts.save_dir + "/" + opts.experiment_name + "/training")
     os.makedirs(opts.save_dir + "/" + opts.experiment_name + "/training")
 
-metrics = {"mIOU": mean_IoU}
-optimizer = optim.SGD(model.parameters(), lr=1e-3)
+metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
 frame = Algorithm(model, loss, optimizer, metrics, opts)
 datasets = load_dataset(opts)
-writer = SummaryWriter(opts.save_dir)
-trainer_segmentation.train_(frame, datasets, writer, opts)
+writer = SummaryWriter(Path(opts.save_dir) / opts.experiment_name)
+trainer_segmentation.train(frame, datasets, writer, opts)

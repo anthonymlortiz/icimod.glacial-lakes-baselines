@@ -1,18 +1,16 @@
 import numpy as np
+import torch
+
+def IoU(y_pred, y):
+    intersection = torch.logical_and(y, y_pred)
+    union = torch.logical_or(y, y_pred)
+    return intersection.sum((1, 2)) / (union.sum((1, 2)) + 0.001)
 
 
-def IoU(pred_segm, gt_segm):
-    intersection = np.logical_and(gt_segm, pred_segm)
-    union = np.logical_or(gt_segm, pred_segm)
-    iou_score = np.sum(intersection) / (np.sum(union) + 0.001)
-    return iou_score
-
-
-def precision(pred, true, label=1):
-    tp = np.sum((pred == label) & (true == label))
-    fp = np.sum((pred == label) & (true != label))
-    result = np.true_divide(tp, (tp + fp + 0.00001))
-    return result
+def precision(y_pred, y, label=1):
+    tp = ((y_pred == label) & (y == label)).sum((1, 2))
+    fp = ((y_pred == label) & (y != label)).sum((1, 2))
+    return torch.true_divide(tp, (tp + fp + 0.00001))
 
 
 def tp_fp_fn(pred, true, label=1):
@@ -22,11 +20,10 @@ def tp_fp_fn(pred, true, label=1):
     return tp, fp, fn
 
 
-def recall(pred, true, label=1):
-    tp = np.sum((pred == label) & (true == label))
-    fn = np.sum((pred != label) & (true == label))
-    result = np.true_divide(tp, (tp + fn + 0.00001))
-    return result
+def recall(y_pred, y, label=1):
+    tp = ((y_pred == label) & (y == label)).sum((1, 2))
+    fn = ((y_pred != label) & (y == label)).sum((1, 2))
+    return torch.true_divide(tp, (tp + fn + 0.00001))
 
 
 def pixel_accuracy(pred_segm, gt_segm):

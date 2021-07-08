@@ -3,7 +3,6 @@ import torch
 from torch.nn import functional as F
 
 
-
 def Heaviside(v, epsilon=-1/2):
     pi = 3.141593
     v = 0.5 * (1 + 2/pi * torch.atan(v/epsilon))
@@ -109,3 +108,42 @@ def levelset_evolution(phi, vf, g=None, T=5, timestep=5, dirac=0.3, dt_max=30):
         phi += timestep * diracPhi * (motion_term + g * curvature.detach())
         phi += 0.2 * distReg_p2(phi.detach())
     return phi
+
+# Training utilities for LSE model
+
+
+def mean_square_loss(y_hat, y, alpha=1):
+    assert (y_hat.size() == y.size())
+    mse = lambda x: torch.mean(torch.pow(x, 2))
+    sdt_loss = mse(y - y_hat)
+    return alpha * sdt_loss
+
+
+def balanced_bce(outputs, labels):
+    assert(outputs.size() == labels.size())
+    labels_count = (torch.sum(labels), torch.sum(1.0 - labels))
+    N = torch.numel(labels)
+    loss_val = -torch.mul(labels, torch.log(outputs)) -\
+        torch.mul((1.0 - labels), torch.log(1.0 - outputs))
+
+    loss_pos = torch.sum(torch.mul(labels, loss_val))
+    loss_neg = torch.sum(torch.mul(1.0 - labels, loss_val))
+    final_loss = labels_count[1] / N * loss_pos + labels_count[0] / N * loss_neg
+    return final_loss / N
+
+
+def vector_field_loss(vf_pred, vf_gt):
+    # (n_batch, n_channels, H, W)
+    vf_pred = F.normalize(vf_pred, p=2, dim=1)
+    vf_gt = F.normalize(vf_gt.float(), p=2, dim=1)
+    cos_dist = torch.sum(torch.mul(vf_pred, vf_gt), dim=1)
+    angle_error = torch.acos(cos_dist * (1-1e-4))
+    return torch.mean(torch.pow(angle_error, 2))
+
+
+def LSE_loss(phi_T, gts, sdts, epsilon=-1, eta=100):
+    return eta * balanced_bce(Heaviside(phi_T, epsilon=epsilon), gts)
+
+
+def interpolater(x, s):
+    return F.interpolate(x, size=s, mode="bilinear", align_corners=True)

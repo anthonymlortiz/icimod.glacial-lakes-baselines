@@ -4,32 +4,48 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
+from utils import lse
 
 affine_par = True
 
 
-def backend_cnn(pth_model, input_channels=4, classifier="psp"):
-    n_classes = (1, 2, 1)
-    concat_dim = 128
-    feature_dim = 4 * concat_dim
-    layers = (3, 4, 23, 3)
-    dilations = (2, 4)
-    strides = (2, 2, 2, 1, 1)
-    model = ResNet(Bottleneck, layers, n_classes[0],
-                   nInputChannels=input_channels, classifier=classifier,
-                   dilations=dilations, strides=strides, _print=True,
-                   feature_dim=feature_dim)
+class DelseModel(nn.Module):
+    def __init__(self, pth_model, input_channels, classifier="psp", T=5,
+                 dt_max=30):
+        super().__init__()
+        self.T = T
+        self.dt_max = dt_max
+        n_classes = (1, 2, 1)
 
-    model_full = Res_Deeplab(pth_model, n_classes[0])
-    model.load_pretrained_ms(model_full, nInputChannels=input_channels)
-    model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512,
-                               sizes=(1, 2, 3, 6), n_classes=n_classes[1])
-    model.layer5_2 = PSPModule(in_features=feature_dim, out_features=512,
-                               sizes=(1, 2, 3, 6), n_classes=n_classes[2])
+        concat_dim = 128
+        feature_dim = 4 * concat_dim
+        layers = (3, 4, 23, 3)
+        dilations = (2, 4)
+        strides = (2, 2, 2, 1, 1)
+        model = ResNet(Bottleneck, layers, n_classes[0],
+                       nInputChannels=input_channels, classifier=classifier,
+                       dilations=dilations, strides=strides, _print=True,
+                       feature_dim=feature_dim)
 
-    weight_init(model.layer5_1)
-    weight_init(model.layer5_2)
-    return SkipResnet(concat_channels=concat_dim, resnet=model)
+        model_full = Res_Deeplab(pth_model, n_classes[0])
+        model.load_pretrained_ms(model_full, nInputChannels=input_channels)
+        model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512,
+                                   sizes=(1, 2, 3, 6), n_classes=n_classes[1])
+        model.layer5_2 = PSPModule(in_features=feature_dim, out_features=512,
+                                   sizes=(1, 2, 3, 6), n_classes=n_classes[2])
+
+        weight_init(model.layer5_1)
+        weight_init(model.layer5_2)
+        self.full_model = SkipResnet(concat_channels=concat_dim, resnet=model)
+
+    def forward(self, x):
+        outputs = self.full_model(x)
+        phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
+        return [phi_0, energy, torch.sigmoid(g)]
+
+    def infer(self, x):
+        phi_0, energy, g = self.forward(x)
+        return lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
 
 
 def weight_init(model):
@@ -112,8 +128,6 @@ class PSPModule(nn.Module):
         return out
 
 
-
-
 class ResNet(nn.Module):
     def __init__(self, block, layers, n_classes, nInputChannels=3,
                  classifier="atrous", dilations=(2, 4), strides=(2, 2, 2, 1, 1),
@@ -160,7 +174,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, bbox=None):
+    def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)

@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+import sys
+sys.path.append("..")
+from utils import lse
 
 
 class MulticlassCrossEntropy(nn.Module):
@@ -11,6 +14,7 @@ class MulticlassCrossEntropy(nn.Module):
         y_pred: Model predictions
         y_true: Ground truth labels
     """
+
     def __init__(self, batch=True):
         super(MulticlassCrossEntropy, self).__init__()
         self.batch = batch
@@ -19,7 +23,6 @@ class MulticlassCrossEntropy(nn.Module):
     def __call__(self, y_pred, y_true):
         loss = self.crossentropy(y_pred, y_true)
         return loss
-
 
 
 class FocalLoss2d(nn.Module):
@@ -32,15 +35,15 @@ class FocalLoss2d(nn.Module):
         self.size_average = size_average
 
     def forward(self, input, target):
-        if input.dim()>2:
+        if input.dim() > 2:
             input = input.contiguous().view(input.size(0), input.size(1), -1)
-            input = input.transpose(1,2)
+            input = input.transpose(1, 2)
             input = input.contiguous().view(-1, input.size(2)).squeeze()
-        if target.dim()==4:
+        if target.dim() == 4:
             target = target.contiguous().view(target.size(0), target.size(1), -1)
-            target = target.transpose(1,2)
+            target = target.transpose(1, 2)
             target = target.contiguous().view(-1, target.size(2)).squeeze()
-        elif target.dim()==3:
+        elif target.dim() == 3:
             target = target.view(-1)
         else:
             target = target.view(-1, 1)
@@ -60,7 +63,6 @@ class FocalLoss2d(nn.Module):
             return loss.sum()
 
 
-
 class WeightedBCELoss(nn.Module):
     """Weighted binary crossentropy, by default weights are [0.5, 0.5],
     equivalent to standard BCE
@@ -68,6 +70,7 @@ class WeightedBCELoss(nn.Module):
     Args:
         nn ([type]): [description]
     """
+
     def __init__(self, weights=[0.2, 0.8], batch=True):
         super(WeightedBCELoss, self).__init__()
         self.batch = batch
@@ -75,16 +78,17 @@ class WeightedBCELoss(nn.Module):
         self.bce_loss = nn.CrossEntropyLoss(weight=self.class_weights)
 
     def __call__(self, y_pred, y_true):
-        loss = self.bce_loss(y_pred, y_true)
+        loss = self.bce_loss(y_pred, y_true.long())
         return loss
 
-        
+
 class DiceBCELoss(nn.Module):
     """DiceBCELoss is a joint BCE and Dice loss optimizing for both objectives
 
     Args:
         nn ([type]): [description]
     """
+
     def __init__(self, batch=True):
         super(DiceBCELoss, self).__init__()
         self.batch = batch
@@ -119,12 +123,13 @@ class DiceLoss(nn.Module):
     Args:
         nn ([type]): [description]
     """
+
     def __init__(self, batch=True):
         super(DiceLoss, self).__init__()
         self.batch = batch
 
     def soft_dice_coeff(self, y_pred, y_true):
-        smooth = 0.001  # may 
+        smooth = 0.001  # may
         if self.batch:
             i = torch.sum(y_true)
             j = torch.sum(y_pred)
@@ -143,3 +148,16 @@ class DiceLoss(nn.Module):
     def __call__(self, y_pred, y_true):
         return self.soft_dice_loss(y_pred, y_true)
 
+
+class DELSELoss(nn.Module):
+    """Loss used in DELSE
+    """
+
+    def __init__(self, epsilon=1):
+        super(self).__init__()
+        self.epsilon = epsilon
+
+    def __call__(self, y, phi_0, sdt, energy, vfs, phi_T):
+        return [1e-3 * lse.mean_square_loss(phi_0, sdt),
+                lse.vector_field_loss(energy, vfs),
+                lse.LSE_loss(phi_T, y, sdt, self.epsilon)]

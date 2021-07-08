@@ -3,11 +3,11 @@ import numpy as np
 import rasterio
 from rasterio.windows import Window
 from rasterio.errors import RasterioIOError
-import torch 
+import torch
 from torch.utils.data.dataset import IterableDataset
 
 class StreamingGeospatialDataset(IterableDataset):
-    
+
     def __init__(self, imagery_fns, stats_fn, label_fns=None, label_channels=[0], groups=None, subtile_bounds=None, chip_size=256, num_chips_per_tile=10, windowed_sampling=False, image_transform=None, label_transform=None, nodata_check=None, verbose=False):
         """A torch Dataset for randomly sampling chips from a list of tiles. When used in conjunction with a DataLoader that has `num_workers>1` this Dataset will assign each worker to sample chips from disjoint sets of tiles.
         Args:
@@ -28,7 +28,7 @@ class StreamingGeospatialDataset(IterableDataset):
             self.fns = imagery_fns
             self.use_labels = False
         else:
-            self.fns = list(zip(imagery_fns, label_fns)) 
+            self.fns = list(zip(imagery_fns, label_fns))
             self.use_labels = True
 
         self.groups = groups
@@ -93,7 +93,7 @@ class StreamingGeospatialDataset(IterableDataset):
 
     def stream_chips(self):
         for img_fn, label_fn, group in self.stream_tile_fns():
-            
+
             num_skipped_chips = 0
 
             # Open file pointers
@@ -168,7 +168,8 @@ class StreamingGeospatialDataset(IterableDataset):
                     i += 1
                     # Note, that img should be a torch "Double" type (i.e. a np.float32) and labels should be a torch "Long" type (i.e. np.int64)
                     if self.use_labels:
-                        yield img, labels[self.label_channels]
+                        lc = [int(ch) for ch in self.label_channels]
+                        yield img, labels[lc].squeeze()
                     else:
                         yield img
             except RasterioIOError as e: # NOTE(caleb): I put this here to catch weird errors that I was seeing occasionally when trying to read from COGS - I don't remember the details though

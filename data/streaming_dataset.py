@@ -8,7 +8,7 @@ from torch.utils.data.dataset import IterableDataset
 
 class StreamingGeospatialDataset(IterableDataset):
 
-    def __init__(self, imagery_fns, stats_fn, label_fns=None, label_channels=[0], groups=None, subtile_bounds=None, chip_size=256, num_chips_per_tile=10, windowed_sampling=False, image_transform=None, label_transform=None, nodata_check=None, verbose=False):
+    def __init__(self, imagery_fns, stats_fn, label_fns=None, groups=None, label_channels=[0], subtile_bounds=None, chip_size=256, num_chips_per_tile=10, windowed_sampling=False, image_transform=None, label_transform=None, nodata_check=None, verbose=False):
         """A torch Dataset for randomly sampling chips from a list of tiles. When used in conjunction with a DataLoader that has `num_workers>1` this Dataset will assign each worker to sample chips from disjoint sets of tiles.
         Args:
             imagery_fns: A list of filenames (or URLS -- anything that `rasterio.open()` can read) pointing to imagery tiles.
@@ -151,7 +151,7 @@ class StreamingGeospatialDataset(IterableDataset):
                         if self.groups is None:
                             img = self.image_transform(img)
                         else:
-                            img = self.image_transform(img, self.stats_fn, group)
+                            img = self.image_transform(img, self.stats_fn, img_fn)
                     else:
                         img = torch.from_numpy(img).squeeze()
 

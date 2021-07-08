@@ -1,11 +1,4 @@
-import torch
-import torch.nn as nn
-import os, sys
-from time import time
-from utils import metrics
-from torch.optim import lr_scheduler
 import numpy as np
-from utils.model_utils import save_loss, CheckpointSaver
 from tqdm import tqdm
 import pandas as pd
 
@@ -25,10 +18,7 @@ def evaluate(model_fun, batch, metrics, device):
 
 def train(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
     for epoch in range(epoch_start, opts.n_epochs):
-        #writer.add_text(f"Starting Epoch:\n", epoch, time())
         train_epoch(algorithm, datasets["train"])
-
-        #writer.add_text("Starting validation", epoch, time())
         metrics = {
             "val": validate(algorithm, datasets["val"]),
             "train": validate(algorithm, datasets["train"])
@@ -37,8 +27,6 @@ def train(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
         log_epoch(writer, epoch, metrics)
         best_val = save_if_needed(algorithm, metrics, best_val, epoch, opts)
 
-def detach(x):
-    return x.item().detach().cpu()
 
 def validate(algorithm, dataset):
     algorithm.model.eval()
@@ -62,7 +50,6 @@ def validate(algorithm, dataset):
 
 
 def log_epoch(writer, epoch, metrics):
-    #writer.add_text("Completed validation", epoch, time())
     for split in ["val", "train"]:
         writer.add_scalar(f"Obj/{split}", metrics[split]["objective"], epoch)
         for m in metrics[split]["avg"].index:
@@ -71,7 +58,7 @@ def log_epoch(writer, epoch, metrics):
 
 def save_if_needed(algorithm, metrics, best_val, epoch, opts):
     cur_val = metrics["val"]["avg"][opts.val_metric]
-    if best_val is None or cur_val  < best_val:
+    if best_val is None or cur_val < best_val:
         best_val = cur_val
         algorithm.save()
     elif epoch % opts.save_epoch == 0:

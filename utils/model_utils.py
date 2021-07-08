@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import math
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import pickle
 
 
@@ -84,9 +84,9 @@ class CheckpointSaver(object):
             try:
                 shutil.copyfile(
                     os.path.join(self.backup_dir,
-                                '{}_best.pth.tar'.format(checkpoint_name)),
+                                 '{}_best.pth.tar'.format(checkpoint_name)),
                     os.path.join(self.backup_dir,
-                                '{}_best.pth.tar_bak'.format(checkpoint_name))
+                                 '{}_best.pth.tar_bak'.format(checkpoint_name))
                 )
             except IOError:
                 pass
@@ -112,19 +112,6 @@ def save_loss(train_loss, val_loss, save_dir, name='loss_plots'):
     plt.xlabel('epoch')
     plt.legend(['train', 'Validation'], loc='upper right')
     plt.savefig(save_dir + name + '.png')
-
-
-def save_inferences(model, loader, out_dir):
-    ix = 0
-    model.eval()
-
-    with torch.no_grad():
-        for x, _ in loader:
-            y_hat = model(x.to(device))
-            for i in range(y_hat.shape[0]):
-                out_path = out_dir / f"{dataset.ids[ix]}-pred.tif"
-                dt.save_raster(y_hat[i], x.meta, x.transform, out_path)
-                ix += 1
 
 
 # Function to load model options

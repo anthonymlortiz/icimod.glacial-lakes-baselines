@@ -19,9 +19,11 @@ class DelseAlgo(Algorithm):
 
         # compute evolution
         if self.epoch < self.pretrain_epoch:
-            phi_T = lse.levelset_evolution(sdt + shift, energy, g, self.model.T, self.model.dt_max)
+            phi_T = lse.levelset_evolution(sdt + shift, energy, g,
+                                           self.model.T, self.model.dt_max)
         else:
-            phi_T = lse.levelset_evolution(phi_0 + shift, energy, g, self.model.T, self.model.dt_max)
+            phi_T = lse.levelset_evolution(phi_0 + shift, energy, g,
+                                           self.model.T, self.model.dt_max)
 
         # return losses
         losses = self.loss(y, phi_0, sdt, energy, vfs, phi_T)

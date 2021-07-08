@@ -1,4 +1,6 @@
-import sys, shutil, os
+import sys
+import shutil
+import os
 import torch
 import utils.metrics as mt
 from trainers import train_funs
@@ -8,7 +10,6 @@ from options.train_options import TrainOptions
 from data.dataloader import load_dataset
 from models.unet import UnetModel
 from tensorboardX import SummaryWriter
-from torch import optim
 from pathlib import Path
 from warnings import warn, filterwarnings
 filterwarnings("ignore", category=UserWarning)

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+
 def IoU(y_pred, y):
     intersection = torch.logical_and(y, y_pred)
     union = torch.logical_or(y, y_pred)
@@ -141,9 +142,9 @@ def frequency_weighted_IoU(pred_segm, gt_segm):
     return _frequency_weighted_IoU
 
 
-#################################################
-### Auxiliary functions used during evaluation. #
-#################################################
+###############################################
+# Auxiliary functions used during evaluation. #
+###############################################
 
 
 def get_pixel_area(segm):
@@ -200,13 +201,14 @@ def check_size(eval_segm, gt_segm):
 '''
 Exceptions
 '''
+
+
 class SizeMismatchErr(Exception):
     def __init__(self, value):
         self.value = value
 
     def __str__(self):
         return repr(self.value)
-
 
 
 if __name__ == "__main__":

@@ -154,7 +154,7 @@ class StreamingGeospatialDataset(IterableDataset):
                         if self.groups is None:
                             img = self.image_transform(img)
                         else:
-                            img = self.image_transform(img, self.stats_fn, group)
+                            img = self.image_transform(img, self.stats_fn, img_fn)
                     else:
                         img = torch.from_numpy(img).squeeze()
 

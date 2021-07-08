@@ -1,49 +1,10 @@
 import numpy as np
-import torch
 import random
 import cv2
 import rasterio.mask
 import geopandas as gpd
 import shapely.geometry as sg
 from scipy import ndimage
-from torch.utils.data import Dataset
-
-
-class ToyExperiment(Dataset):
-
-    def __init__(self, x, y, dts, sdts, N=10):
-        x = x / x.max()
-        self.p = []
-        for i in range(y.shape[0]):
-            self.p.append(extreme_points(y[i]))
-
-        # concatenate gaussian extreme points with original x
-        self.p_blur = gaussian_convolve(x.shape[1:], np.vstack(self.p))\
-            .sum(0, keepdims=True)
-        self.x = np.vstack((x, self.p_blur))
-        self.x = torch.from_numpy(self.x).float()
-
-        self.y = torch.from_numpy(y).sum(axis=0, keepdims=True)
-        self.dts = torch.from_numpy(dts).sum(axis=0, keepdims=True)
-        self.sdts = torch.from_numpy(sdts).sum(axis=0, keepdims=True)
-        self.patch_size = [128, 128]
-        self.N = N
-
-    def __len__(self):
-        return self.N
-
-    def __getitem__(self, ix):
-        _, w, h = self.x.shape
-        w_min = random.randint(0, w - self.patch_size[0])
-        h_min = random.randint(0, h - self.patch_size[1])
-        w_ix = np.arange(w_min, w_min + self.patch_size[0])
-        h_ix = np.arange(h_min, h_min + self.patch_size[1])
-
-        x = self.x[:, w_ix[None, :], h_ix[:, None]]
-        return x,\
-            self.y[:, w_ix[None, :], h_ix[:, None]],\
-            self.dts[:, w_ix[None, :], h_ix[:, None]],\
-            self.sdts[:, w_ix[None, :], h_ix[:, None]]
 
 
 def extreme_points(mask, pert=0):
@@ -51,15 +12,14 @@ def extreme_points(mask, pert=0):
         sel_id = ids[0][random.randint(0, len(ids[0]) - 1)]
         return [id_x[sel_id], id_y[sel_id]]
 
-
     # List of coordinates of the mask
     inds_y, inds_x = np.where(mask > 0.5)
 
     # Find extreme points
-    return np.array([find_point(inds_x, inds_y, np.where(inds_x <= np.min(inds_x)+pert)), # left
-                     find_point(inds_x, inds_y, np.where(inds_x >= np.max(inds_x)-pert)), # right
-                     find_point(inds_x, inds_y, np.where(inds_y <= np.min(inds_y)+pert)), # top
-                     find_point(inds_x, inds_y, np.where(inds_y >= np.max(inds_y)-pert)) # bottom
+    return np.array([find_point(inds_x, inds_y, np.where(inds_x <= np.min(inds_x)+pert)),  # left
+                     find_point(inds_x, inds_y, np.where(inds_x >= np.max(inds_x)-pert)),  # right
+                     find_point(inds_x, inds_y, np.where(inds_y <= np.min(inds_y)+pert)),  # top
+                     find_point(inds_x, inds_y, np.where(inds_y >= np.max(inds_y)-pert))  # bottom
                      ])
 
 

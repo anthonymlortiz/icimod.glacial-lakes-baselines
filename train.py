@@ -1,7 +1,7 @@
 import sys, shutil, os
 import torch
 import utils.metrics as mt
-from trainers import trainer_segmentation
+from trainers import train_funs
 from trainers.train_framework import Algorithm
 from models.losses import MulticlassCrossEntropy, WeightedBCELoss
 from options.train_options import TrainOptions
@@ -49,4 +49,4 @@ metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
 frame = Algorithm(model, loss, optimizer, metrics, opts)
 datasets = load_dataset(opts)
 writer = SummaryWriter(Path(opts.save_dir) / opts.experiment_name)
-trainer_segmentation.train(frame, datasets, writer, opts)
+train_funs.train(frame, datasets, writer, opts)

@@ -11,20 +11,19 @@ import pandas as pd
 
 
 def train_epoch(algorithm, dataset):
-    iterator = tqdm(dataset)
     algorithm.model.train()
-    for batch in iterator:
+    for batch in tqdm(dataset):
         algorithm.update(batch)
 
 
 def evaluate(model_fun, batch, metrics, device):
     x, y = [s.to(device) for s in batch]
     y_pred, outputs = model_fun(x)
-    metrics_ = {k: m(y_pred, y) for k, m in metrics.items()}
+    metrics_ = {k: m(y_pred, y).cpu().numpy() for k, m in metrics.items()}
     return metrics_, y, outputs
 
 
-def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
+def train(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
     for epoch in range(epoch_start, opts.n_epochs):
         #writer.add_text(f"Starting Epoch:\n", epoch, time())
         train_epoch(algorithm, datasets["train"])
@@ -38,24 +37,23 @@ def train_(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
         log_epoch(writer, epoch, metrics)
         best_val = save_if_needed(algorithm, metrics, best_val, epoch, opts)
 
+def detach(x):
+    return x.item().detach().cpu()
 
 def validate(algorithm, dataset):
     algorithm.model.eval()
     metrics, objective = [], []
     for batch in dataset:
-        print("evaluating")
         metrics_, y, outputs = evaluate(
                 algorithm.model.infer,
                 batch,
-                metrics,
+                algorithm.metrics,
                 algorithm.device
             )
-        objective.append(algorithm.objective(y, outputs))
-        metrics.append(metrics_)
+        objective.append(algorithm.objective(y, outputs).item())
+        metrics.append(pd.DataFrame(metrics_))
 
-    import pdb
-    pdb.set_trace()
-    metrics = pd.DataFrame(metrics)
+    metrics = pd.concat(metrics)
     return {
         "avg": metrics.mean(axis=0),
         "sample": metrics,
@@ -72,10 +70,10 @@ def log_epoch(writer, epoch, metrics):
 
 
 def save_if_needed(algorithm, metrics, best_val, epoch, opts):
-    if best_val is None or metrics[opts.val_metric] < best_val:
-        print(metrics["val"]["avg"])
-        best_val = metrics["val"]["avg"][opts.val_metric]
-        algorithm.save(epoch, opts)
+    cur_val = metrics["val"]["avg"][opts.val_metric]
+    if best_val is None or cur_val  < best_val:
+        best_val = cur_val
+        algorithm.save()
     elif epoch % opts.save_epoch == 0:
-        algorithm.save(epoch, opts, str(epoch))
+        algorithm.save(str(epoch))
     return best_val

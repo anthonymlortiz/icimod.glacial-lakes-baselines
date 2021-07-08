@@ -47,6 +47,7 @@ class Algorithm:
         self.metrics = metrics
         self.device = torch.device(opts.device)
         self.max_grad_norm = opts.max_grad_norm
+        self.opts = opts
 
     def process_batch(self, batch):
         x, y = [s.to(self.device) for s in batch]
@@ -73,5 +74,5 @@ class Algorithm:
         return objective.item()
 
     def save(self, suffix="best"):
-        fname = f"{self.opts.id}-{suffix}.pth"
-        torch.save(self.model.state_dict(), Path(self.opts.out_dir) / fname)
+        fname = f"{self.opts.experiment_name}_{suffix}.pth"
+        torch.save(self.model.state_dict(), Path(self.opts.save_dir) / fname)

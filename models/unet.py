@@ -82,3 +82,8 @@ class UnetModel(BaseNetwork):
         for op in self.upblocks:
             x = op(x, decoder_outputs.pop())
         return self.seg_layer(x)
+
+    def infer(self, x, threshold=0.4):
+        with torch.no_grad():
+            probs = self.forward(x)
+            return torch.argmax(probs, dim=1), probs

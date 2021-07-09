@@ -8,7 +8,7 @@ from torch.utils.data.dataset import IterableDataset
 
 class StreamingGeospatialDataset(IterableDataset):
 
-    def __init__(self, imagery_fns, stats_fn, label_fns=None, label_channels=[0], groups=None, subtile_bounds=None, chip_size=256, num_chips_per_tile=10, windowed_sampling=False, image_transform=None, label_transform=None, nodata_check=None, verbose=False):
+    def __init__(self, imagery_fns, stats_fn, label_fns=None, meta_fns=None, groups=None, subtile_bounds=None, chip_size=256, num_chips_per_tile=10, windowed_sampling=False, image_transform=None, label_transform=None, nodata_check=None, verbose=False):
         """A torch Dataset for randomly sampling chips from a list of tiles. When used in conjunction with a DataLoader that has `num_workers>1` this Dataset will assign each worker to sample chips from disjoint sets of tiles.
         Args:
             imagery_fns: A list of filenames (or URLS -- anything that `rasterio.open()` can read) pointing to imagery tiles.
@@ -28,7 +28,7 @@ class StreamingGeospatialDataset(IterableDataset):
             self.fns = imagery_fns
             self.use_labels = False
         else:
-            self.fns = list(zip(imagery_fns, label_fns))
+            self.fns = list(zip(imagery_fns, label_fns, meta_fns))
             self.use_labels = True
 
         self.groups = groups
@@ -42,7 +42,6 @@ class StreamingGeospatialDataset(IterableDataset):
         self.image_transform = image_transform
         self.label_transform = label_transform
         self.nodata_check = nodata_check
-        self.label_channels = label_channels
 
         self.verbose = verbose
 
@@ -77,7 +76,7 @@ class StreamingGeospatialDataset(IterableDataset):
 
             label_fn = None
             if self.use_labels:
-                img_fn, label_fn = self.fns[idx]
+                img_fn, label_fn, meta_fn = self.fns[idx]
             else:
                 img_fn = self.fns[idx]
 
@@ -89,16 +88,17 @@ class StreamingGeospatialDataset(IterableDataset):
             if self.verbose:
                 print("Worker %d, yielding file %d" % (worker_id, idx))
 
-            yield (img_fn, label_fn, group)
+            yield (img_fn, label_fn, meta_fn, group)
 
     def stream_chips(self):
-        for img_fn, label_fn, group in self.stream_tile_fns():
+        for img_fn, label_fn, meta_fn, group in self.stream_tile_fns():
 
             num_skipped_chips = 0
 
             # Open file pointers
             img_fp = rasterio.open(img_fn, "r")
             label_fp = rasterio.open(label_fn, "r") if self.use_labels else None
+            meta_fp = rasterio.open(meta_fn, "r") if self.use_labels else None
 
             height, width = img_fp.shape
             if self.use_labels: # garantee that our label mask has the same dimensions as our imagery
@@ -111,6 +111,7 @@ class StreamingGeospatialDataset(IterableDataset):
                     img_data = np.rollaxis(img_fp.read(), 0, 3)
                     if self.use_labels:
                         label_data = label_fp.read().squeeze() # assume the label geotiff has a single channel
+                        meta_data = meta_fp.read().squeeze()
 
                 i = 0
                 while i < self.num_chips_per_tile:
@@ -130,10 +131,12 @@ class StreamingGeospatialDataset(IterableDataset):
                         img = np.rollaxis(img_fp.read(window=Window(x, y, self.chip_size, self.chip_size)), 0, 3)
                         if self.use_labels:
                             labels = label_fp.read(window=Window(x, y, self.chip_size, self.chip_size)).squeeze()
+                            meta = meta_fp.read(window=Window(x, y, self.chip_size, self.chip_size)).squeeze()
                     else:
                         img = img_data[y:y+self.chip_size, x:x+self.chip_size, :]
                         if self.use_labels:
-                            labels = label_data[:, y:y+self.chip_size, x:x+self.chip_size]
+                            labels = label_data[y:y+self.chip_size, x:x+self.chip_size]
+                            meta = meta_data[:, y:y+self.chip_size, x:x+self.chip_size]
 
                     # Check for no data
                     if self.nodata_check is not None:
@@ -160,16 +163,18 @@ class StreamingGeospatialDataset(IterableDataset):
                         if self.label_transform is not None:
                             if self.groups is None:
                                 labels = self.label_transform(labels)
+                                meta = self.label_transform(meta)
                             else:
                                 labels = self.label_transform(labels, group)
+                                meta = self.label_transform(meta, group)
                         else:
                             labels = torch.from_numpy(labels).squeeze()
+                            meta = torch.from_numpy(meta).squeeze()
 
                     i += 1
                     # Note, that img should be a torch "Double" type (i.e. a np.float32) and labels should be a torch "Long" type (i.e. np.int64)
                     if self.use_labels:
-                        lc = [int(ch) for ch in self.label_channels]
-                        yield img, labels[lc].squeeze()
+                        yield img, labels, meta
                     else:
                         yield img
             except RasterioIOError as e: # NOTE(caleb): I put this here to catch weird errors that I was seeing occasionally when trying to read from COGS - I don't remember the details though
@@ -179,6 +184,7 @@ class StreamingGeospatialDataset(IterableDataset):
             img_fp.close()
             if self.use_labels:
                 label_fp.close()
+                meta_fp.close()
 
             if num_skipped_chips>0 and self.verbose:
                 print("We skipped %d chips on %s" % (img_fn))

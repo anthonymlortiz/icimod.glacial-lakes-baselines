@@ -24,5 +24,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--max_grad_norm', type=float, default=100, help='Gradient clipping')
         parser.add_argument('--val_metric', type=str, default='IoU', help='Which metric to use for model selection? [IoU | precision | recall]')
         parser.add_argument('--save_epoch', type=int, default=10, help='How frequently to save checkpoints?')
+        parser.add_argument('--delse_iterations', type=int, default=5, help='How many level set updates for DELSE?')
+        parser.add_argument('--dt_max', type=int, default=10, help='Maximum gradient in DELSE update?')
         self.isTrain = True
         return parser

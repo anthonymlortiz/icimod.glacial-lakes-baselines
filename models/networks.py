@@ -10,11 +10,10 @@ affine_par = True
 
 
 class DelseModel(nn.Module):
-    def __init__(self, pth_model, input_channels, classifier="psp", T=5,
-                 dt_max=30):
+    def __init__(self, opts):
         super().__init__()
-        self.T = T
-        self.dt_max = dt_max
+        self.T = opts.delse_iterations
+        self.dt_max = opts.dt_max
         n_classes = (1, 2, 1)
 
         concat_dim = 128
@@ -23,11 +22,11 @@ class DelseModel(nn.Module):
         dilations = (2, 4)
         strides = (2, 2, 2, 1, 1)
         model = ResNet(Bottleneck, layers, n_classes[0],
-                       nInputChannels=input_channels, classifier=classifier,
+                       nInputChannels=input_channels, classifier="psp",
                        dilations=dilations, strides=strides, _print=True,
                        feature_dim=feature_dim)
 
-        model_full = Res_Deeplab(pth_model, n_classes[0])
+        model_full = Res_Deeplab(opts.pth_model, n_classes[0])
         model.load_pretrained_ms(model_full, nInputChannels=input_channels)
         model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512,
                                    sizes=(1, 2, 3, 6), n_classes=n_classes[1])
@@ -38,14 +37,18 @@ class DelseModel(nn.Module):
         weight_init(model.layer5_2)
         self.full_model = SkipResnet(concat_channels=concat_dim, resnet=model)
 
-    def forward(self, x):
+    def forward(self, x, meta):
+        x = torch.stack([meta[:, 0], x])  # add extreme points labels
         outputs = self.full_model(x)
         phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
         return [phi_0, energy, torch.sigmoid(g)]
 
-    def infer(self, x):
-        phi_0, energy, g = self.forward(x)
-        return lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
+    def infer(self, x, meta):
+        with torch.no_grad():
+            phi_0, energy, g = self.forward(x, meta)
+            probs = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
+            print(probs.shape)
+            return torch.argmax(probs, dim=1), probs
 
 
 def weight_init(model):

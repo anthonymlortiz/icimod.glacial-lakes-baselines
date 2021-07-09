@@ -13,7 +13,7 @@ def evaluate(model_fun, batch, metrics, device):
     x, y, meta = [s.to(device) for s in batch]
     y_pred, outputs = model_fun(x, meta)
     metrics_ = {k: m(y_pred, y).cpu().numpy() for k, m in metrics.items()}
-    return metrics_, y, outputs
+    return metrics_, y, outputs, meta
 
 
 def train(algorithm, datasets, writer, opts, epoch_start=0, best_val=None):
@@ -32,13 +32,13 @@ def validate(algorithm, dataset):
     algorithm.model.eval()
     metrics, objective = [], []
     for batch in dataset:
-        metrics_, y, outputs = evaluate(
+        metrics_, y, outputs, meta = evaluate(
                 algorithm.model.infer,
                 batch,
                 algorithm.metrics,
                 algorithm.device
             )
-        objective.append(algorithm.objective(y, outputs).item())
+        objective.append(algorithm.objective(y, outputs, meta).item())
         metrics.append(pd.DataFrame(metrics_))
 
     metrics = pd.concat(metrics)

@@ -26,5 +26,6 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--save_epoch', type=int, default=10, help='How frequently to save checkpoints?')
         parser.add_argument('--delse_iterations', type=int, default=5, help='How many level set updates for DELSE?')
         parser.add_argument('--dt_max', type=int, default=10, help='Maximum gradient in DELSE update?')
+        parser.add_argument('--delse_pth', type=str, default="/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth", help='Path to pretrained model for DELSE')
         self.isTrain = True
         return parser

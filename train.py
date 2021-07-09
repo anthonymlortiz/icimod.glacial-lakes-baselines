@@ -25,7 +25,7 @@ if opts.model == "unet":
     model = UnetModel(opts)
     params = model.parameters()
 elif opts.model == "delse":
-    model = DELSEModel(opts)
+    model = DelseModel(opts)
     params = [{'params': model.get_1x_lr_params(), 'lr': opts.lr},
               {'params': net.get_10x_lr_params(), 'lr': opts.lr * 10}]
 else:

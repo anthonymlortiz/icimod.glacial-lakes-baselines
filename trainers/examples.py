@@ -11,9 +11,9 @@ class DelseAlgo(Algorithm):
         self.epsilon = opts.epsilon
         self.shift = opts.shift
 
-    def objective(self, batch):
-        y, (phi_0, energy, g) = self.process_batch(batch)
-        sdt = y[:, 1, :]
+    def objective(self, y, outputs, meta):
+        (phi_0, energy, g) = outputs
+        sdt = meta[:, 2]  # signed distance transform
         vfs = lse.gradient(y, split=False)
         shift = 10 * np.random.rand() - 5
 
@@ -31,6 +31,6 @@ class DelseAlgo(Algorithm):
             losses = losses[-1]
         return sum(losses)
 
-    def update(self, batch):
+    def _update(self, y, outputs, meta):
         self.epoch += 1
-        super().update(self, batch)
+        super().update(self, y, outputs, meta)

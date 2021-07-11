@@ -9,6 +9,7 @@ from models.losses import MulticlassCrossEntropy, WeightedBCELoss
 from options.train_options import TrainOptions
 from data.dataloader import load_dataset
 from models.unet import UnetModel
+from models.networks import DelseModel
 from tensorboardX import SummaryWriter
 from pathlib import Path
 from warnings import warn, filterwarnings
@@ -22,8 +23,13 @@ print(' '.join(sys.argv))
 # Define model according to opts
 if opts.model == "unet":
     model = UnetModel(opts)
+    params = model.parameters()
+elif opts.model == "delse":
+    model = DelseModel(opts)
+    params = [{'params': model.get_1x_lr_params(), 'lr': opts.lr},
+              {'params': net.get_10x_lr_params(), 'lr': opts.lr * 10}]
 else:
-    assert NotImplementedError, f"Option {opts.model} not supported. Available options: unet,fcn, hrnet"
+    assert NotImplementedError, f"Option {opts.model} not supported. Available options: unet,delse"
 model = model.to(torch.device(opts.device))
 
 # Define loss function or criterion based on opts
@@ -36,9 +42,9 @@ else:
 
 # Setup optimizer according to opts
 if opts.optimizer == "adam":
-    optimizer = torch.optim.Adam(model.parameters(), lr=opts.lr, betas=(opts.beta1, opts.beta2))
+    optimizer = torch.optim.Adam(params, lr=opts.lr, betas=(opts.beta1, opts.beta2))
 if opts.optimizer == "sgd":
-    optimizer = torch.optim.SGD(model.parameters(), lr=opts.lr, momentum=0.9)
+    optimizer = torch.optim.SGD(params, lr=opts.lr, momentum=0.9)
 
 
 if opts.overwrite:

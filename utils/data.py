@@ -102,8 +102,9 @@ def preprocessor(img, y):
     y, extreme_polys = mask(y, img)
     dist, signed_dist = sdt(y)
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
-    y = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
-    return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), np.stack(y)
+    sums = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
+    y, meta = sums[0][np.newaxis, ...], np.stack(sums[1:])
+    return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 
 def save_raster(z, meta, transform, path):

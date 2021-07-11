@@ -15,20 +15,20 @@ class Algorithm:
         self.opts = opts
 
     def process_batch(self, batch):
-        x, y = [s.to(self.device) for s in batch]
-        outputs = self.model(x)
-        return y, outputs
+        x, y, meta = [s.to(self.device) for s in batch]
+        outputs = self.model(x, meta)
+        return y, outputs, meta
 
-    def objective(self, y, outputs):
+    def objective(self, y, outputs, meta):
         return self.loss(outputs, y)
 
     def update(self, batch):
-        y, outputs = self.process_batch(batch)
-        objective = self._update(y, outputs)
+        y, outputs, meta = self.process_batch(batch)
+        objective = self._update(y, outputs, meta)
         return y, outputs, objective
 
-    def _update(self, y, outputs):
-        objective = self.objective(y, outputs)
+    def _update(self, y, outputs, meta):
+        objective = self.objective(y, outputs, meta)
         self.optimizer.zero_grad()
         objective.backward()
 

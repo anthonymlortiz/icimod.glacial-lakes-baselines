@@ -23,18 +23,18 @@ class BaseOptions():
         parser.add_argument('--overwrite', action='store_true', default=False, help='if set, overwrite training dir')
         parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
 
-
         # input/output settings
         parser.add_argument('--input_channels', type=int, default=3, help='Number of channel in the input images')
         parser.add_argument('--num_classes', type=int, default=2, help='Number of output segmentation classes per task')
         parser.add_argument('--num_workers', default=4, type=int, help='# workers for loading data')
 
-
         # general model params
         parser.add_argument('--first_layer_filters', type=int, default=8, help='Number of filters in the first UNet layer')
         parser.add_argument('--net_depth', type=int, default=4, help='Number of layers for the model')
-
         parser.add_argument('--checkpoint_file', type=str, default='none', help='Model to resume. If training from scratch use none')
+        parser.add_argument('--delse_iterations', type=int, default=5, help='How many level set updates for DELSE?')
+        parser.add_argument('--dt_max', type=int, default=10, help='Maximum gradient in DELSE update?')
+        parser.add_argument('--delse_pth', type=str, default="/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth", help='Path to pretrained model for DELSE')
 
         self.initialized = True
         self.isTrain = False

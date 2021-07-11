@@ -70,7 +70,7 @@ class UnetModel(BaseNetwork):
 
         self.seg_layer = nn.Conv2d(2 * self.out_channels, self.num_classes, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, x, meta=None):
         decoder_outputs = []
 
         for op in self.downblocks:
@@ -83,7 +83,7 @@ class UnetModel(BaseNetwork):
             x = op(x, decoder_outputs.pop())
         return self.seg_layer(x)
 
-    def infer(self, x, threshold=0.4):
+    def infer(self, x, meta=None, threshold=0.4):
         with torch.no_grad():
-            probs = self.forward(x)
+            probs = self.forward(x, meta)
             return torch.argmax(probs, dim=1), probs

@@ -75,7 +75,7 @@ class ClassifierModule(nn.Module):
         self.conv2d_list = nn.ModuleList()
         for dilation, padding in zip(dilation_series, padding_series):
             self.conv2d_list.append(
-                nn.Conv2d(512, n_classes, kernel_size=3, stride=1, # had been 2048, not 512
+                nn.Conv2d(512, n_classes, kernel_size=3, stride=1,  # had been 2048, not 512
                           padding=padding, dilation=dilation, bias=True)
             )
 
@@ -93,6 +93,7 @@ class PSPModule(nn.Module):
     """
     Pyramid Scene Parsing module
     """
+
     def __init__(self, in_features=2048, out_features=512, sizes=(1, 2, 3, 6), n_classes=1):
         super(PSPModule, self).__init__()
         self.stages = []
@@ -278,7 +279,7 @@ class Bottleneck(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1,  dilation_=1, downsample=None):
         super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False) # change
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False)
         self.bn1 = nn.BatchNorm2d(planes, affine=affine_par)
         for i in self.bn1.parameters():
             i.requires_grad = False
@@ -287,7 +288,7 @@ class Bottleneck(nn.Module):
             padding = 2
         elif dilation_ == 4:
             padding = 4
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, # change
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1,
                                padding=padding, bias=False, dilation=dilation_)
         self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
         for i in self.bn2.parameters():
@@ -376,16 +377,17 @@ class SkipResnet(nn.Module):
         # Different from original, original used maxpool
         # Original used no activation here
         if self.use_conv:
-            conv_final_1 = nn.Conv2d(4*concat_channels, mid_dim, kernel_size=3, padding=1, stride=2,
-                bias=False)
+            conv_final_1 = nn.Conv2d(4*concat_channels, mid_dim, kernel_size=3,
+                                     padding=1, stride=2, bias=False)
             bn_final_1 = nn.BatchNorm2d(mid_dim)
             conv_final_2 = nn.Conv2d(mid_dim, mid_dim, kernel_size=3, padding=1, stride=2, bias=False)
             bn_final_2 = nn.BatchNorm2d(mid_dim)
             conv_final_3 = nn.Conv2d(mid_dim, final_dim, kernel_size=3, padding=1, bias=False)
             bn_final_3 = nn.BatchNorm2d(final_dim)
 
-            self.conv_final = nn.Sequential(conv_final_1, bn_final_1, conv_final_2, bn_final_2,
-                conv_final_3, bn_final_3)
+            self.conv_final = nn.Sequential(conv_final_1, bn_final_1,
+                                            conv_final_2, bn_final_2,
+                                            conv_final_3, bn_final_3)
         else:
             self.conv_final = None
 

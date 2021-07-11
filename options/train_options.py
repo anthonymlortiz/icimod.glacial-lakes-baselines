@@ -1,10 +1,11 @@
 from options.base_options import BaseOptions
 
+
 class TrainOptions(BaseOptions):
     def initialize(self, parser):
         BaseOptions.initialize(self, parser)
 
-        #Options for training
+        # Options for training
         parser.add_argument('--n_epochs', type=int, default=10, help='# of training epochs')
         parser.add_argument('--optimizer', type=str, default='adam', help='optimizer for training model [adam | sgd]')
         parser.add_argument('--beta1', type=float, default=0.9, help='momentum term of adam')

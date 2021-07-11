@@ -23,12 +23,10 @@ class BaseOptions():
         parser.add_argument('--overwrite', action='store_true', default=False, help='if set, overwrite training dir')
         parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
 
-
         # input/output settings
         parser.add_argument('--input_channels', type=int, default=3, help='Number of channel in the input images')
         parser.add_argument('--num_classes', type=int, default=2, help='Number of output segmentation classes per task')
         parser.add_argument('--num_workers', default=4, type=int, help='# workers for loading data')
-
 
         # general model params
         parser.add_argument('--first_layer_filters', type=int, default=8, help='Number of filters in the first UNet layer')

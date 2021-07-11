@@ -27,7 +27,7 @@ if opts.model == "unet":
 elif opts.model == "delse":
     model = DelseModel(opts)
     params = [{'params': model.get_1x_lr_params(), 'lr': opts.lr},
-              {'params': net.get_10x_lr_params(), 'lr': opts.lr * 10}]
+              {'params': model.get_10x_lr_params(), 'lr': opts.lr * 10}]
 else:
     assert NotImplementedError, f"Option {opts.model} not supported. Available options: unet,delse"
 model = model.to(torch.device(opts.device))

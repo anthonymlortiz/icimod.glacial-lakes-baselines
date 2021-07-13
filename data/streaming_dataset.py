@@ -5,6 +5,7 @@ from rasterio.windows import Window
 from rasterio.errors import RasterioIOError
 import torch
 from torch.utils.data.dataset import IterableDataset
+import os
 
 class StreamingGeospatialDataset(IterableDataset):
 
@@ -154,7 +155,9 @@ class StreamingGeospatialDataset(IterableDataset):
                         if self.groups is None:
                             img = self.image_transform(img)
                         else:
-                            img = self.image_transform(img, self.stats_fn, img_fn)
+                            base = os.path.basename(img_fn)
+                            id = os.path.splitext(base)[0]
+                            img = self.image_transform(img, self.stats_fn, id)
                     else:
                         img = torch.from_numpy(img).squeeze()
 

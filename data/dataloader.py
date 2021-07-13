@@ -77,7 +77,7 @@ def load_dataset(opts, kwargs=None):
     train_label_fns.sort()
     train_meta_fns.sort()
     stats_fn = get_stats_fn(opts.data_dir, "train", opts.dataset)
-    trn = StreamingGeospatialDataset(train_img_fns, stats_fn, train_label_fns,train_meta_fns,  groups=train_img_fns, label_channels=opts.label_channels, chip_size=opts.chip_size, num_chips_per_tile=20, image_transform=img_transforms, verbose=False)
+    trn = StreamingGeospatialDataset(train_img_fns, stats_fn, train_label_fns,train_meta_fns,  groups=train_img_fns, chip_size=opts.chip_size, num_chips_per_tile=20, image_transform=img_transforms, verbose=False)
 
     val_img_fns = get_imagery_fns(opts.data_dir, "val", opts.dataset)
     val_label_fns = get_labels_fns(opts.data_dir , "val", opts.dataset)

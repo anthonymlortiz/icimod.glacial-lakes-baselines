@@ -86,6 +86,7 @@ def load_dataset(opts, kwargs=None):
     val_meta_fns = get_meta_fns(opts.data_dir , "val", opts.dataset)
     val_img_fns.sort()
     val_label_fns.sort()
+    stats_fn = get_stats_fn(opts.data_dir, "val", opts.dataset)
     val = StreamingGeospatialDataset(val_img_fns, stats_fn, val_label_fns, val_meta_fns, groups=val_img_fns, chip_size=opts.chip_size, num_chips_per_tile=10, image_transform=img_transforms, verbose=False)
 
     trn_loader = torch.utils.data.DataLoader(trn, batch_size=opts.batch_size, num_workers=opts.num_workers, pin_memory=True)

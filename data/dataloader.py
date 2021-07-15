@@ -53,10 +53,12 @@ def get_image_transforms():
 
 def image_transforms(img, stats_fn, id): #, stats_fn, id):
     mean, std = get_imagery_statistics(stats_fn, id)
+    
     img = (img - mean) / std
     img = np.rollaxis(img, 2, 0).astype(np.float32)
     img = np.nan_to_num(img)
     img = torch.from_numpy(img)
+    
     return img
 
 

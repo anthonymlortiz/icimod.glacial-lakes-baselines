@@ -5,7 +5,12 @@ from torch import nn
 from torch.nn import functional as F
 import math
 import matplotlib.pyplot as plt
+import numpy as np
 import pickle
+import rasterio
+import sys
+sys.path.append("..")
+from data.dataloader import image_transforms
 
 
 class LocalContextNorm(nn.Module):
@@ -121,3 +126,32 @@ def load_options(file_name):
     else:
         opt = pickle.load(open(file_name + '.pkl', 'rb'))
     return opt
+
+
+# generic inference function
+def inference_gen(pred_fun, processor, postprocessor, **kwargs):
+    def inferencer(fn, meta_fn):
+        x, meta, pre = processor(fn, meta_fn, **kwargs)
+        with torch.no_grad():
+            y_hat, probs = pred_fun(x, meta)
+
+        return postprocessor(y_hat, probs, pre, **kwargs)
+    return inferencer
+
+
+# example input pre and postprocessing functions for inference
+def processor_test(fn, meta_fn, device, out=(1024, 1024), **kwargs):
+    x = rasterio.open(fn).read()
+    meta = rasterio.open(meta_fn).read()
+    x = np.transpose(x, (1, 2, 0))
+
+    x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
+    x_ = image_transforms(x_).to(device).unsqueeze(0)
+    return x_, meta, {"dim": x.shape}
+
+
+def postprocessor_test(y_hat, probs, pre, **kwargs):
+    y_hat = y_hat[:, :pre["dim"][0], :pre["dim"][1]]
+    probs = probs[:, :, :pre["dim"][0], :pre["dim"][1]]
+    cpu = lambda x: x.cpu().numpy().squeeze()
+    return cpu(y_hat), cpu(probs)

@@ -14,8 +14,8 @@ class DelseModel(nn.Module):
         super().__init__()
         self.T = opts.delse_iterations
         self.dt_max = opts.dt_max
+        self.input_channels = opts.input_channels
         n_classes = (1, 2, 1)
-        input_channels = 11
 
         concat_dim = 128
         feature_dim = 4 * concat_dim

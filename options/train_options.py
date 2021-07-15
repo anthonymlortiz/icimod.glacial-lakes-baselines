@@ -12,7 +12,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--beta2', type=float, default=0.999, help='momentum term of adam')
 
         parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
-        parser.add_argument('--chip_size', type=int, default=512, help='Size for each training patch')
+        parser.add_argument('--chip_size', type=int, default=256, help='Size for each training patch')
         parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate for adam')
         parser.add_argument('--loss', type=str, default='wbce', help='loss for training model [ce | wbce | focal]')
         parser.add_argument('--scheduler_patience', type=int, default=5, help='lr scheduler patience')

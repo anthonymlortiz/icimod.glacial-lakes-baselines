@@ -148,12 +148,12 @@ class DiceLoss(nn.Module):
         return self.soft_dice_loss(y_pred, y_true)
 
 
-class DELSELoss(nn.Module):
+class DelseLoss(nn.Module):
     """Loss used in DELSE
     """
 
     def __init__(self, epsilon=1):
-        super(self).__init__()
+        super(DelseLoss, self).__init__()
         self.epsilon = epsilon
 
     def __call__(self, y, phi_0, sdt, energy, vfs, phi_T):

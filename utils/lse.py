@@ -26,6 +26,7 @@ def del2(x):
     assert x.dim() == 4
     laplacian = [[0, 1, 0], [1, -4, 1], [0, 1, 0]]
     laplacian = torch.FloatTensor(laplacian).unsqueeze(0).unsqueeze(0)
+    laplacian = laplacian.to(x.device)
 
     x = F.conv2d(x, laplacian, padding=0)
     return torch.nn.ReplicationPad2d(1)(x)

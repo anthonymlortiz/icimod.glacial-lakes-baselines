@@ -1,19 +1,20 @@
-from train_framework import Algorithm
+from trainers.train_framework import Algorithm
 from utils import lse
 import numpy as np
 
 
 class DelseAlgo(Algorithm):
-    def __init__(self, model, loss, metrics, opts):
-        super().__init__(model=model, loss=loss, metrics=metrics, opts=opts)
-        self.epoch = opts.epoch
-        self.pretrain_epoch = opts.pretrain_epoch
-        self.epsilon = opts.epsilon
-        self.shift = opts.shift
+    def __init__(self, model, loss, optimizer, metrics, opts):
+        super().__init__(model, loss, optimizer, metrics, opts)
+        self.epoch = 0
+        self.epsilon = opts.delse_epsilon
+        self.model = model
+        self.pretrain_epoch = opts.delse_pretrain
 
     def objective(self, y, outputs, meta):
+        y = y.unsqueeze(1)
         (phi_0, energy, g) = outputs
-        sdt = meta[:, 2]  # signed distance transform
+        sdt = meta[:, 2:3]  # signed distance transform
         vfs = lse.gradient(y, split=False)
         shift = 10 * np.random.rand() - 5
 
@@ -28,9 +29,9 @@ class DelseAlgo(Algorithm):
         # return losses
         losses = self.loss(y, phi_0, sdt, energy, vfs, phi_T)
         if self.epoch > self.pretrain_epoch:
-            losses = losses[-1]
+            losses = [losses[-1]]
         return sum(losses)
 
-    def _update(self, y, outputs, meta):
+    def update(self, batch):
         self.epoch += 1
-        super().update(self, y, outputs, meta)
+        super().update(batch)

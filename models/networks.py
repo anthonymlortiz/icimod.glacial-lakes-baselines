@@ -14,8 +14,8 @@ class DelseModel(nn.Module):
         super().__init__()
         self.T = opts.delse_iterations
         self.dt_max = opts.dt_max
+        self.input_channels = opts.input_channels
         n_classes = (1, 2, 1)
-        input_channels = 11
 
         concat_dim = 128
         feature_dim = 4 * concat_dim
@@ -23,12 +23,12 @@ class DelseModel(nn.Module):
         dilations = (2, 4)
         strides = (2, 2, 2, 1, 1)
         model = ResNet(Bottleneck, layers, n_classes[0],
-                       nInputChannels=input_channels, classifier="psp",
+                       nInputChannels=self.input_channels + 1, classifier="psp",
                        dilations=dilations, strides=strides, _print=True,
                        feature_dim=feature_dim)
 
-        model_full = Res_Deeplab(opts.pth_model, n_classes[0])
-        model.load_pretrained_ms(model_full, nInputChannels=input_channels)
+        model_full = Res_Deeplab(opts.delse_pth, n_classes[0])
+        model.load_pretrained_ms(model_full, nInputChannels=self.input_channels + 1)
         model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512,
                                    sizes=(1, 2, 3, 6), n_classes=n_classes[1])
         model.layer5_2 = PSPModule(in_features=feature_dim, out_features=512,
@@ -39,7 +39,7 @@ class DelseModel(nn.Module):
         self.full_model = SkipResnet(concat_channels=concat_dim, resnet=model)
 
     def forward(self, x, meta):
-        x = torch.stack([meta[:, 0], x])  # add extreme points labels
+        x = torch.cat([meta[:, 0:1], x], dim=1)  # add extreme points labels
         outputs = self.full_model(x)
         phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
         return [phi_0, energy, torch.sigmoid(g)]
@@ -48,7 +48,6 @@ class DelseModel(nn.Module):
         with torch.no_grad():
             phi_0, energy, g = self.forward(x, meta)
             probs = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
-            print(probs.shape)
             return torch.argmax(probs, dim=1), probs
 
 

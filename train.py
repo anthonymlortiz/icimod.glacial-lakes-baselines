@@ -5,7 +5,8 @@ import torch
 import utils.metrics as mt
 from trainers import train_funs
 from trainers.train_framework import Algorithm
-from models.losses import MulticlassCrossEntropy, WeightedBCELoss
+from trainers.examples import DelseAlgo
+from models import losses
 from options.train_options import TrainOptions
 from data.dataloader import load_dataset
 from models.unet import UnetModel
@@ -26,17 +27,19 @@ if opts.model == "unet":
     params = model.parameters()
 elif opts.model == "delse":
     model = DelseModel(opts)
-    params = [{'params': model.get_1x_lr_params(), 'lr': opts.lr},
-              {'params': model.get_10x_lr_params(), 'lr': opts.lr * 10}]
+    params = [{'params': model.full_model.get_1x_lr_params(), 'lr': opts.lr},
+              {'params': model.full_model.get_10x_lr_params(), 'lr': opts.lr * 10}]
 else:
     assert NotImplementedError, f"Option {opts.model} not supported. Available options: unet,delse"
 model = model.to(torch.device(opts.device))
 
 # Define loss function or criterion based on opts
 if opts.loss == "ce":
-    loss = MulticlassCrossEntropy()
+    loss = losses.MulticlassCrossEntropy()
 elif opts.loss == "wbce":
-    loss = WeightedBCELoss()
+    loss = losses.WeightedBCELoss()
+elif opts.loss == "delse":
+    loss = losses.DelseLoss()
 else:
     assert NotImplementedError, f"Option {opts.loss} not supported. Available options: ce, wbce"
 
@@ -53,7 +56,11 @@ if opts.overwrite:
     os.makedirs(opts.save_dir + "/" + opts.experiment_name + "/training")
 
 metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
-frame = Algorithm(model, loss, optimizer, metrics, opts)
+if opts.model == "unet":
+    frame = Algorithm(model, loss, optimizer, metrics, opts)
+elif opts.model == "delse":
+    frame = DelseAlgo(model, loss, optimizer, metrics, opts)
+
 datasets = load_dataset(opts)
 writer = SummaryWriter(Path(opts.save_dir) / opts.experiment_name)
 train_funs.train(frame, datasets, writer, opts)

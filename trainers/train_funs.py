@@ -11,7 +11,7 @@ def train_epoch(algorithm, dataset):
 
 def evaluate(model_fun, batch, metrics, device):
     x, y, meta = [s.to(device) for s in batch]
-    y_pred, outputs = model_fun(x, meta)
+    y_pred, _, outputs = model_fun(x, meta)
     metrics_ = {k: m(y_pred, y).cpu().numpy() for k, m in metrics.items()}
     return metrics_, y, outputs, meta
 

@@ -42,13 +42,13 @@ class DelseModel(nn.Module):
         x = torch.cat([meta[:, 0:1], x], dim=1)  # add extreme points labels
         outputs = self.full_model(x)
         phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
-        return [phi_0, energy, torch.sigmoid(g)]
+        return phi_0, energy, torch.sigmoid(g)
 
     def infer(self, x, meta):
         with torch.no_grad():
             phi_0, energy, g = self.forward(x, meta)
             probs = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
-            return torch.argmax(probs, dim=1), probs
+            return torch.argmax(probs, dim=1), probs, (phi_0, energy, g)
 
 
 def weight_init(model):

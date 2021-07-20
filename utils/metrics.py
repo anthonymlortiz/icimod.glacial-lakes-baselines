@@ -2,13 +2,21 @@ import numpy as np
 import torch
 
 
+def check_types(y_pred, y):
+    if type(y) != torch.Tensor or type(y_pred) != torch.Tensor:
+        y_pred = torch.from_numpy(y_pred)
+        y = torch.from_numpy(y)
+    return y_pred, y
+
 def IoU(y_pred, y):
+    y_pred, y = check_types(y_pred, y)
     intersection = torch.logical_and(y, y_pred)
     union = torch.logical_or(y, y_pred)
     return intersection.sum((1, 2)) / (union.sum((1, 2)) + 0.001)
 
 
 def precision(y_pred, y, label=1):
+    y_pred, y = check_types(y_pred, y)
     tp = ((y_pred == label) & (y == label)).sum((1, 2))
     fp = ((y_pred == label) & (y != label)).sum((1, 2))
     return torch.true_divide(tp, (tp + fp + 0.00001))
@@ -22,6 +30,7 @@ def tp_fp_fn(pred, true, label=1):
 
 
 def recall(y_pred, y, label=1):
+    y_pred, y = check_types(y_pred, y)
     tp = ((y_pred == label) & (y == label)).sum((1, 2))
     fn = ((y_pred != label) & (y == label)).sum((1, 2))
     return torch.true_divide(tp, (tp + fn + 0.00001))

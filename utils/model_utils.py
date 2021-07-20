@@ -1,16 +1,23 @@
-import os
-import shutil
-import torch
-from torch import nn
-from torch.nn import functional as F
-import math
-import matplotlib.pyplot as plt
-import numpy as np
-import pickle
-import rasterio
 import sys
 sys.path.append("..")
 from data.dataloader import image_transforms
+from pathlib import Path
+from scipy.ndimage.filters import gaussian_filter
+from torch import nn
+from torch.nn import functional as F
+from utils.data import save_raster, mask
+import geopandas as gpd
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pickle
+import rasterio
+import rasterio.features as rf
+import shutil
+import tempfile
+import torch
+import utils.metrics as mt
 
 
 class LocalContextNorm(nn.Module):
@@ -130,23 +137,24 @@ def load_options(file_name):
 
 # generic inference function
 def inference_gen(pred_fun, processor, postprocessor, **kwargs):
-    def inferencer(fn, meta_fn):
-        x, meta, pre = processor(fn, meta_fn, **kwargs)
+    def inferencer(fn, meta_fn, stats_fn):
+        x, meta, pre = processor(fn, meta_fn, stats_fn, **kwargs)
         with torch.no_grad():
-            y_hat, probs = pred_fun(x, meta)
+            y_hat, probs, _ = pred_fun(x, meta)
 
         return postprocessor(y_hat, probs, pre, **kwargs)
     return inferencer
 
 
 # example input pre and postprocessing functions for inference
-def processor_test(fn, meta_fn, device, out=(1024, 1024), **kwargs):
+def processor_test(fn, meta_fn, stats_fn, device, out=(1024, 1024), **kwargs):
     x = rasterio.open(fn).read()
     meta = rasterio.open(meta_fn).read()
     x = np.transpose(x, (1, 2, 0))
-
     x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
-    x_ = image_transforms(x_).to(device).unsqueeze(0)
+
+    id = Path(fn).stem
+    x_ = image_transforms(x_, stats_fn, id).to(device).unsqueeze(0)
     return x_, meta, {"dim": x.shape}
 
 
@@ -154,4 +162,30 @@ def postprocessor_test(y_hat, probs, pre, **kwargs):
     y_hat = y_hat[:, :pre["dim"][0], :pre["dim"][1]]
     probs = probs[:, :, :pre["dim"][0], :pre["dim"][1]]
     cpu = lambda x: x.cpu().numpy().squeeze()
-    return cpu(y_hat), cpu(probs)
+    return cpu(y_hat)[np.newaxis], cpu(probs)
+
+
+def blur_raster(x, sigma=2, threshold=0.5):
+    blurred = gaussian_filter(x.read(), sigma=sigma)
+    f = tempfile.NamedTemporaryFile()
+    save_raster(blurred > threshold, x.meta, x.transform, Path(f.name))
+    return rasterio.open(Path(f.name))
+
+
+def polygonize_preds(y_hat, crop_region, tol=25e-5):
+    y_hat = list(rf.dataset_features(blur_raster(y_hat), as_mask=True))
+    y_hat = gpd.GeoDataFrame.from_features(y_hat)
+
+    crop_region = gpd.GeoDataFrame(geometry=[crop_region])
+    result = gpd.overlay(crop_region, y_hat, how="intersection")\
+        .simplify(tolerance=tol)
+    return gpd.GeoDataFrame(geometry=result)
+
+
+def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
+    y_, _ = mask(y, context)
+    y_hat_, _ = mask(y_hat, context)
+
+    y_ = y_.sum(axis=0, keepdims=True)
+    y_hat_ = y_hat_.sum(axis=0, keepdims=True)
+    return {k: v(y_hat_, y_).item() for k, v in metrics.items()}

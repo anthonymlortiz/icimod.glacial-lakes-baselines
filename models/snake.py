@@ -91,14 +91,9 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
     img = img_as_float(image)
     img = img.astype(float, copy=False)
 
-    RGB = img.ndim == 3
-
     # Find edges using sobel:
     if w_edge != 0:
-        if RGB:
-            edge = [sobel(img[:, :, 0]), sobel(img[:, :, 1]),
-                    sobel(img[:, :, 2])]
-        elif img.ndim == 1:
+        if img.ndim == 1:
             edge = [sobel(img)]
         else:
             edge_new = [sobel(c) for c in np.moveaxis(img, -1, 0)]
@@ -107,7 +102,7 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
         edge = [0]
 
     # Superimpose intensity and edge images:
-    if RGB:
+    if img.ndim > 1:
         img = w_line*np.sum(img, axis=2) \
             + w_edge*sum(edge)
     else:

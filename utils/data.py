@@ -107,7 +107,7 @@ def preprocessor(img, y):
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 
-def save_raster(z, meta, transform, path):
+def save_raster(z, meta, transform, path, exist_ok=True):
     meta.update({
         "driver": "GTiff",
         "height": z.shape[1],
@@ -117,5 +117,6 @@ def save_raster(z, meta, transform, path):
         "dtype": rasterio.float32
     })
 
+    path.parent.mkdir(parents=True, exist_ok=exist_ok)
     with rasterio.open(path, "w", **meta) as f:
         f.write(z.astype(np.float32))

@@ -22,6 +22,7 @@ class BaseOptions():
         parser.add_argument('--verbose', action='store_true', help='if set, print info while training')
         parser.add_argument('--overwrite', action='store_true', default=False, help='if set, overwrite training dir')
         parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
+        parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
 
         # input/output settings
         parser.add_argument('--input_channels', type=int, default=11, help='Number of channel in the input images')

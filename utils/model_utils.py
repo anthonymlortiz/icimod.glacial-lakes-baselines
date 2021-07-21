@@ -3,6 +3,7 @@ sys.path.append("..")
 from data.dataloader import image_transforms
 from pathlib import Path
 from scipy.ndimage.filters import gaussian_filter
+from shapely.geometry import box
 from torch import nn
 from torch.nn import functional as F
 from utils.data import save_raster, mask
@@ -173,11 +174,13 @@ def blur_raster(x, sigma=2, threshold=0.5):
 
 
 def polygonize_preds(y_hat, crop_region, tol=25e-5):
-    y_hat = list(rf.dataset_features(blur_raster(y_hat), as_mask=True))
-    y_hat = gpd.GeoDataFrame.from_features(y_hat)
+    ft = list(rf.dataset_features(blur_raster(y_hat), as_mask=True))
+    ft = gpd.GeoDataFrame.from_features(ft)
+    if len(ft) == 0:
+        return gpd.GeoDataFrame(geometry=[box(*y_hat.bounds).centroid])
 
     crop_region = gpd.GeoDataFrame(geometry=[crop_region])
-    result = gpd.overlay(crop_region, y_hat, how="intersection")\
+    result = gpd.overlay(crop_region, ft, how="intersection")\
         .simplify(tolerance=tol)
     return gpd.GeoDataFrame(geometry=result)
 

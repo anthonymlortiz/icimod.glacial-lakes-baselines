@@ -1,5 +1,10 @@
+from skimage.measure import find_contours
 import numpy as np
+import similaritymeasures
+import sys
 import torch
+sys.path.append("..")
+from utils.data import polygon_coords
 
 
 def check_types(y_pred, y):
@@ -34,6 +39,31 @@ def recall(y_pred, y, label=1):
     tp = ((y_pred == label) & (y == label)).sum((1, 2))
     fn = ((y_pred != label) & (y == label)).sum((1, 2))
     return torch.true_divide(tp, (tp + fn + 0.00001))
+
+
+def frechet_distance(y_pred, y):
+    y = find_contours(y.squeeze())[0]
+    y_pred = find_contours(y.squeeze())[0]
+
+    # normalize and compute similarity
+    ranges = array_ranges(y, y_pred)
+    y = min_max(y, ranges)
+    y_pred = min_max(y_pred, ranges)
+    return similaritymeasures.frechet_dist(y, y_pred)
+
+
+def min_max(z, ranges):
+    for j in range(2):
+        z[:, j] = (z[:, j] - ranges[j][0]) / (ranges[j][1] - ranges[j][0])
+    return z
+
+
+def array_ranges(x, y):
+    ranges = []
+    for j in range(x.shape[1]):
+        concat = np.concatenate([x[:, j], y[:, j]])
+        ranges.append([concat.min(), concat.max()])
+    return ranges
 
 
 def pixel_accuracy(pred_segm, gt_segm):

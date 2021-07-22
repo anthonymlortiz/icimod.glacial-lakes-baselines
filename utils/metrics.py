@@ -47,24 +47,7 @@ def frechet_distance(y_pred, y):
     y_pred = find_contours(y_pred.squeeze())[0]
 
     # normalize and compute similarity
-    ranges = array_ranges(y, y_pred)
-    y = min_max(y, ranges)
-    y_pred = min_max(y_pred, ranges)
     return similaritymeasures.frechet_dist(y, y_pred)
-
-
-def min_max(z, ranges):
-    for j in range(2):
-        z[:, j] = (z[:, j] - ranges[j][0]) / (ranges[j][1] - ranges[j][0])
-    return z
-
-
-def array_ranges(x, y):
-    ranges = []
-    for j in range(x.shape[1]):
-        concat = np.concatenate([x[:, j], y[:, j]])
-        ranges.append([concat.min(), concat.max()])
-    return ranges
 
 
 def pixel_accuracy(pred_segm, gt_segm):

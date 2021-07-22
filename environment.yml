@@ -17,6 +17,8 @@ dependencies:
   - rasterio
   - scipy
   - shapely
+  - similaritymeasures
+  - scikit-image
   - tensorboard
   - tensorboardx
   - tqdm

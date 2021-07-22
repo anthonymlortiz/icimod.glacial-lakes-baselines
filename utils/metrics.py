@@ -1,10 +1,7 @@
 from skimage.measure import find_contours
 import numpy as np
 import similaritymeasures
-import sys
 import torch
-sys.path.append("..")
-from utils.data import polygon_coords
 
 
 def check_types(y_pred, y):
@@ -42,8 +39,12 @@ def recall(y_pred, y, label=1):
 
 
 def frechet_distance(y_pred, y):
+    if type(y) == torch.Tensor or type(y_pred) == torch.Tensor:
+        y = y.detach().cpu().numpy()
+        y_pred = y_pred.detach().cpu().numpy()
+
     y = find_contours(y.squeeze())[0]
-    y_pred = find_contours(y.squeeze())[0]
+    y_pred = find_contours(y_pred.squeeze())[0]
 
     # normalize and compute similarity
     ranges = array_ranges(y, y_pred)

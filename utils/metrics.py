@@ -1,4 +1,6 @@
+from skimage.measure import find_contours
 import numpy as np
+import similaritymeasures
 import torch
 
 
@@ -34,6 +36,18 @@ def recall(y_pred, y, label=1):
     tp = ((y_pred == label) & (y == label)).sum((1, 2))
     fn = ((y_pred != label) & (y == label)).sum((1, 2))
     return torch.true_divide(tp, (tp + fn + 0.00001))
+
+
+def frechet_distance(y_pred, y):
+    if type(y) == torch.Tensor or type(y_pred) == torch.Tensor:
+        y = y.detach().cpu().numpy()
+        y_pred = y_pred.detach().cpu().numpy()
+
+    y = find_contours(y.squeeze())[0]
+    y_pred = find_contours(y_pred.squeeze())[0]
+
+    # normalize and compute similarity
+    return similaritymeasures.frechet_dist(y, y_pred)
 
 
 def pixel_accuracy(pred_segm, gt_segm):

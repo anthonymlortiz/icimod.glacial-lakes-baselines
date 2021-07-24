@@ -40,7 +40,7 @@ class Algorithm:
 
     def save(self, suffix="best"):
         fname = f"{self.opts.experiment_name}_{suffix}.pth"
-        if (suffix=="best")
+        if suffix=="best":
             torch.save(self.model.state_dict(), Path(self.opts.backup_dir) / fname)
         else:
             torch.save(self.model.state_dict(), Path(self.opts.save_dir) / fname)

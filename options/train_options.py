@@ -13,10 +13,9 @@ class TrainOptions(BaseOptions):
 
         parser.add_argument('--chip_size', type=int, default=256, help='Size for each training patch')
         parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate for adam')
-        parser.add_argument('--loss', type=str, default='wbce', help='loss for training model [ce | wbce | focal]')
+        parser.add_argument('--loss', type=str, default='wbce', help='loss for training model [ce | wbce | delse]')
         parser.add_argument('--scheduler_patience', type=int, default=5, help='lr scheduler patience')
 
-        parser.add_argument('--device', type=str, default='cuda', help='Which device to use? [cuda | cpu]')
         parser.add_argument('--max_grad_norm', type=float, default=100, help='Gradient clipping')
         parser.add_argument('--val_metric', type=str, default='IoU', help='Which metric to use for model selection? [IoU | precision | recall]')
         parser.add_argument('--save_epoch', type=int, default=10, help='How frequently to save checkpoints?')

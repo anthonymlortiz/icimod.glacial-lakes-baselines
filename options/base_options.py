@@ -13,6 +13,7 @@ class BaseOptions():
         parser.add_argument('--experiment_name', type=str, default='bing_test', help='name of the experiment.')
 
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
+        parser.add_argument('--device', type=str, default='cuda', help='Which device to use? [cuda | cpu]')
         parser.add_argument('--save_dir', type=str, default='/datadrive/results/save/', help='latest models are saved here')
         parser.add_argument('--backup_dir', type=str, default='/datadrive/results/backup/', help='best models are saved here')
         parser.add_argument('--data_dir', type=str, default='/datadrive/snake/lakes', help='directory where datasets are located')

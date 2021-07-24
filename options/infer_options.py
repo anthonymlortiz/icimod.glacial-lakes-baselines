@@ -4,10 +4,11 @@ from options.base_options import BaseOptions
 class InferOptions(BaseOptions):
     def initialize(self, parser):
         BaseOptions.initialize(self, parser)
-        parser.add_argument('--chip_size', type=int, default=256, help='Size for each training patch')
-        parser.add_argument('--device', type=str, default='cuda', help='Which device to use? [cuda | cpu]')
-        parser.add_argument('--infer_paths', type=str, default='infer_test.csv', help='Relative paths to inference files')
-        parser.add_argument('--stats_fn', type=str, default='le7-2015/splits/train/statistics.csv', help='Relative path to stats.csv?')
+        parser.add_argument('--x_dir', type=str, default='le7-2015/splits/val/images', help='Relative paths to imagery on which to perform inference')
+        parser.add_argument('--meta_dir', type=str, default='le7-2015/splits/val/meta', help='Relative paths to metadata on which to perform inference')
+        parser.add_argument('--inference_dir', type=str, default='/datadrive/results/inference/landsat-val/', help='Absolute path to directory where results should be saved')
+        parser.add_argument('--stats_fn', type=str, default='le7-2015/splits/val/statistics.csv', help='Relative path to stats.csv')
+        parser.add_argument('--model_pth', type=str, default='/datadrive/results/save/unet-landsat7_best.pth', help='Absolte path to model')
         return parser
 
 

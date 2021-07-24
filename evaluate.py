@@ -7,7 +7,6 @@ from tqdm import tqdm
 import utils.data as dt
 import utils.metrics as mt
 import utils.model_utils as mu
-import sys
 from warnings import warn, filterwarnings
 filterwarnings("ignore", category=UserWarning)
 

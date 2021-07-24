@@ -11,13 +11,12 @@ from warnings import warn, filterwarnings
 filterwarnings("ignore", category=UserWarning)
 
 opts = EvalOptions().parse()
-base = Path(opts.data_dir)
-save_dir = base / opts.save_dir
+save_dir = Path(opts.save_dir)
 save_dir.mkdir(parents=True, exist_ok=True)
 eval_paths = dt.eval_paths(opts.inference_dir)
 
 # read in the true labels, but get a buffer
-vector_label = gpd.read_file(base / opts.vector_label)
+vector_label = gpd.read_file(opts.vector_label)
 vector_label = vector_label.set_index("GL_ID")
 buffer = vector_label.buffer(distance=opts.buffer)
 
@@ -33,7 +32,7 @@ m = []
 for i, (path, sample_id) in tqdm(eval_paths.iterrows(), total=len(eval_paths)):
     # get polygon predictions
     gl_id, _ = sample_id.split("-")
-    y_hat = rasterio.open(base / path)
+    y_hat = rasterio.open(path)
     y_hat_poly = mu.polygonize_preds(y_hat, buffer.loc[gl_id])
     y_hat_poly.to_file(save_dir / f"{sample_id}.geojson", driver="GeoJSON")
 

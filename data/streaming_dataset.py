@@ -158,11 +158,11 @@ class StreamingGeospatialDataset(IterableDataset):
                             base = os.path.basename(img_fn)
                             id = os.path.splitext(base)[0]
                             img = self.image_transform(img, self.stats_fn, id)
-                            
+
                     else:
                         img = torch.from_numpy(img).squeeze()
 
-                    
+
 
                     # Transform the labels
                     if self.use_labels:
@@ -195,6 +195,9 @@ class StreamingGeospatialDataset(IterableDataset):
 
             if num_skipped_chips>0 and self.verbose:
                 print("We skipped %d chips on %s" % (img_fn))
+
+    def __len__(self):
+        return self.num_chips_per_tile * len(self.fns)
 
     def __iter__(self):
         if self.verbose:

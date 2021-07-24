@@ -4,6 +4,8 @@ import cv2
 import rasterio.mask
 import geopandas as gpd
 import shapely.geometry as sg
+import pathlib
+import pandas as pd
 from scipy import ndimage
 
 
@@ -120,3 +122,21 @@ def save_raster(z, meta, transform, path, exist_ok=True):
     path.parent.mkdir(parents=True, exist_ok=exist_ok)
     with rasterio.open(path, "w", **meta) as f:
         f.write(z.astype(np.float32))
+
+
+def inference_paths(x_dir, meta_dir, infer_dir):
+    fn = list(pathlib.Path(x_dir).glob("*tif"))
+    meta_fn = list(pathlib.Path(meta_dir).glob("*tif"))
+    fn.sort(), meta_fn.sort()
+
+    out_fn_y = [infer_dir / (f.stem + "-pred.tif") for f in fn]
+    out_fn_prob = [infer_dir / (f.stem + "-prob.tif") for f in fn]
+
+    return pd.DataFrame({
+        "sample_id": [f.stem for f in fn],
+        "GLID": [f.stem.split()[0] for f in fn],
+        "fn": fn,
+        "meta_fn": meta_fn,
+        "out_fn_y": out_fn_y,
+        "out_fn_prob": out_fn_prob
+    }).set_index("sample_id")

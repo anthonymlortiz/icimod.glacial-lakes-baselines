@@ -19,9 +19,12 @@ filterwarnings("ignore", category=UserWarning)
 
 # parse options
 opts = TrainOptions().parse()
-print(' '.join(sys.argv))
 opts.save_dir = Path(opts.save_dir)
 opts.backup_dir = Path(opts.backup_dir)
+opts.log_dir = Path(opts.log_dir)
+opts.save_dir.mkdir(parents=True, exist_ok=True)
+opts.backup_dir.mkdir(parents=True, exist_ok=True)
+opts.log_dir.mkdir(parents=True, exist_ok=True)
 
 # Define model according to opts
 if opts.model == "unet":
@@ -51,14 +54,6 @@ if opts.optimizer == "adam":
 if opts.optimizer == "sgd":
     optimizer = torch.optim.SGD(params, lr=opts.lr, momentum=0.9)
 
-
-if opts.overwrite:
-    warn("You have chosen to overwrite previous training directory for this experiment")
-    shutil.rmtree(opts.save_dir / opts.experiment_name)
-    os.makedirs(opts.save_dir / opts.experiment_name)
-    shutil.rmtree(opts.backup_dir / opts.experiment_name)
-    os.makedirs(opts.backup_dir / opts.experiment_name)
-
 metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
 if opts.model == "unet":
     frame = Algorithm(model, loss, optimizer, metrics, opts)
@@ -66,5 +61,5 @@ elif opts.model == "delse":
     frame = DelseAlgo(model, loss, optimizer, metrics, opts)
 
 datasets = load_dataset(opts)
-writer = SummaryWriter(opts.save_dir / opts.experiment_name)
+writer = SummaryWriter(opts.log_dir / opts.experiment_name)
 train_funs.train(frame, datasets, writer, opts)

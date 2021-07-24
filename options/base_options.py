@@ -16,12 +16,12 @@ class BaseOptions():
         parser.add_argument('--device', type=str, default='cuda', help='Which device to use? [cuda | cpu]')
         parser.add_argument('--save_dir', type=str, default='/datadrive/results/save/', help='latest models are saved here')
         parser.add_argument('--backup_dir', type=str, default='/datadrive/results/backup/', help='best models are saved here')
+        parser.add_argument('--log_dir', type=str, default='/datadrive/results/logs/', help='logs are saved here')
         parser.add_argument('--data_dir', type=str, default='/datadrive/snake/lakes', help='directory where datasets are located')
         parser.add_argument('--init_type', type=str, default='none', help='which model to use [none | normal | xavier | xavier_uniform | kaiming | orthogonal]')
         parser.add_argument('--model', type=str, default='unet', help='which initialization method to use [unet | delse ]')
         parser.add_argument('--phase', type=str, default='train', help='model phase [train | test]')
         parser.add_argument('--verbose', action='store_true', help='if set, print info while training')
-        parser.add_argument('--overwrite', action='store_true', default=False, help='if set, overwrite training dir')
         parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
         parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
 

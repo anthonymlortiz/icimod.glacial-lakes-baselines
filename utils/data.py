@@ -140,3 +140,11 @@ def inference_paths(x_dir, meta_dir, infer_dir):
         "out_fn_y": out_fn_y,
         "out_fn_prob": out_fn_prob
     }).set_index("sample_id")
+
+
+def eval_paths(infer_dir):
+    fn = list(pathlib.Path(infer_dir).glob("*-pred.tif"))
+    return pd.DataFrame({
+        "path": fn,
+        "sample_id": [str(f.stem).replace("-pred", "") for f in fn]
+    })

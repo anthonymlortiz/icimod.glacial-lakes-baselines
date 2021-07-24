@@ -5,7 +5,7 @@ import pandas as pd
 
 def train_epoch(algorithm, dataset):
     algorithm.model.train()
-    for batch in tqdm(dataset):
+    for batch in tqdm(dataset, total=len(dataset)):
         algorithm.update(batch)
 
 

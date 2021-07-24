@@ -3,6 +3,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 import rasterio
+from tqdm import tqdm
 import utils.data as dt
 import utils.metrics as mt
 import utils.model_utils as mu
@@ -13,7 +14,7 @@ opts = EvalOptions().parse()
 base = Path(opts.data_dir)
 save_dir = base / opts.save_dir
 save_dir.mkdir(parents=True, exist_ok=True)
-eval_paths = pd.read_csv(base / opts.eval_paths)
+eval_paths = dt.eval_paths(opts.inference_dir)
 
 # read in the true labels, but get a buffer
 vector_label = gpd.read_file(base / opts.vector_label)
@@ -21,12 +22,15 @@ vector_label = vector_label.set_index("GL_ID")
 buffer = vector_label.buffer(distance=opts.buffer)
 
 # loop over paths, get predictions, and evaluate
-metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
+metrics = {
+    "IoU": mt.IoU,
+    "precision": mt.precision,
+    "recall": mt.recall,
+    "frechet": mt.frechet_distance
+}
 m = []
 
-for _, (path, sample_id) in eval_paths.iterrows():
-    print(f"processing sample {sample_id}")
-
+for i, (path, sample_id) in tqdm(eval_paths.iterrows(), total=len(eval_paths)):
     # get polygon predictions
     gl_id, _ = sample_id.split("-")
     y_hat = rasterio.open(base / path)

@@ -36,13 +36,13 @@ pred_fun = mu.inference_gen(
 infer_paths = dt.inference_paths(
     base / opts.x_dir,
     base / opts.meta_dir,
-    opts.inference_dir
+    Path(opts.inference_dir)
 )
 fns = [base / s for s in infer_paths.fn.values]
 meta_fns = [base / s for s in infer_paths.meta_fn.values]
 
 for i, (_, fn, meta_fn, out_fn_y, out_fn_prob) in infer_paths.iterrows():
-    y_hat, probs = pred_fun(base / fn, base / meta_fn, base / opts.stats_fn)
+    y_hat, probs = pred_fun(fn, meta_fn, base / opts.stats_fn)
     x_meta = rasterio.open(base / fn).meta
     dt.save_raster(y_hat, x_meta, x_meta["transform"], out_fn_y)
     dt.save_raster(probs, x_meta, x_meta["transform"], out_fn_prob)

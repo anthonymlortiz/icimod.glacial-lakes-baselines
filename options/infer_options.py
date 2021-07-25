@@ -17,6 +17,7 @@ class EvalOptions(BaseOptions):
         BaseOptions.initialize(self, parser)
         parser.set_defaults(save_dir="/datadrive/results/inference/landsat_val-unet")
         parser.add_argument("--inference_dir", type=str, default="/datadrive/results/inference/landsat_val-unet")
-        parser.add_argument("--vector_label", type=str, default="GL_3basins_2015.shp")
+        parser.add_argument("--vector_label", type=str, default="/datadrive/snake/lakes/GL_3basins_2015.shp")
         parser.add_argument("--buffer", type=float, default=0.01)
+        parser.add_argument("--tol", type=float, default=1e-4)
         return parser

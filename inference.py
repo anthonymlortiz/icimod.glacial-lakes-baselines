@@ -6,6 +6,7 @@ from options.infer_options import InferOptions
 import torch
 import pandas as pd
 import rasterio
+from tqdm import tqdm
 from models.unet import UnetModel
 from models.networks import DelseModel
 from pathlib import Path
@@ -39,7 +40,7 @@ infer_paths = dt.inference_paths(
     Path(opts.inference_dir)
 )
 
-for i, (_, fn, meta_fn, out_fn_y, out_fn_prob) in infer_paths.iterrows():
+for _, (_, fn, meta_fn, out_fn_y, out_fn_prob) in tqdm(infer_paths.iterrows(), total=len(infer_paths)):
     y_hat, probs = pred_fun(fn, meta_fn, base / opts.stats_fn)
     x_meta = rasterio.open(fn).meta
     dt.save_raster(y_hat, x_meta, x_meta["transform"], out_fn_y)

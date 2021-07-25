@@ -69,6 +69,11 @@ def sdt(y, dt_max=30):
 
 
 def mask(y, img):
+    if (len(y)) == 0:
+        mask = np.zeros((1, img.meta["height"], img.meta["width"]))
+        p = [[0, 0], [0, 1], [1, 0], [1, 1]]
+        return mask, p
+
     extent = gpd.GeoDataFrame(
         index=[0],
         crs=y.crs,

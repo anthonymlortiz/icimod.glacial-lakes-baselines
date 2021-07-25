@@ -178,8 +178,7 @@ def polygonize_preds(y_hat, crop_region, tol=25e-5):
     ft = list(rf.dataset_features(blur_raster(y_hat), as_mask=True))
     ft = gpd.GeoDataFrame.from_features(ft)
     crop_region = gpd.GeoDataFrame(geometry=[crop_region])
-    result = gpd.overlay(crop_region, ft, how="intersection")\
-        .simplify(tolerance=tol)
+    result = gpd.overlay(crop_region, ft).simplify(tolerance=tol)
 
     # if no polygon, just return the center of the prediction region
     if len(result) == 0:
@@ -193,4 +192,4 @@ def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
 
     y_ = y_.sum(axis=0, keepdims=True)
     y_hat_ = y_hat_.sum(axis=0, keepdims=True)
-    return {k: v(y_hat_, y_).item() for k, v in metrics.items()}
+    return {k: v(y_hat_, y_) for k, v in metrics.items()}

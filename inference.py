@@ -1,6 +1,7 @@
 import sys
 sys.path.append("..")
 import utils.model_utils as mu
+import models.snake as snake
 import utils.data as dt
 from options.infer_options import InferOptions
 import torch
@@ -13,25 +14,40 @@ from pathlib import Path
 from warnings import warn, filterwarnings
 filterwarnings("ignore", category=UserWarning)
 
+
 # load the model according to opts
 opts = InferOptions().parse()
-if opts.model == "unet":
-    model = UnetModel(opts)
-elif opts.model == "delse":
-    model = DelseModel(opts)
-
-model.load_state_dict(torch.load(opts.model_pth))
-model.eval()
-model.to(opts.device)
-
-# function that will do inference
-base = Path(opts.data_dir)
-pred_fun = mu.inference_gen(
-    model.infer,
-    mu.processor_test,
-    mu.postprocessor_test,
+if opts.model == "snake":
+    pred_fun = mu.inference_gen(
+    snake.infer,
+    mu.processor_snake,
+    mu.postprocessor_snake,
     device=opts.device
-)
+    )
+
+else:
+    if opts.model == "unet":
+        model = UnetModel(opts)
+    elif opts.model == "delse":
+        model = DelseModel(opts)
+
+    model.load_state_dict(torch.load(opts.model_pth))
+    model.eval()
+    model.to(opts.device)
+
+    # function that will do inference
+    base = Path(opts.data_dir)
+    pred_fun = mu.inference_gen(
+
+    model.infer,
+    mu.processor_raster,
+    mu.postprocessor_raster,
+    device=opts.device
+    )
+
+
+base = Path(opts.data_dir)
+stats_fn = base / "statistics.csv" 
 
 # get paths and run inference
 infer_paths = dt.inference_paths(

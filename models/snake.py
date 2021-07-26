@@ -104,7 +104,7 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
     # Superimpose intensity and edge images:
     if img.ndim > 1:
         img = w_line*np.sum(img, axis=2) \
-            + w_edge*sum(edge)
+            + w_edge*np.sum(edge)
     else:
         img = w_line*img + w_edge*edge[0]
 
@@ -211,3 +211,9 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
                 break
 
     return np.stack([y, x], axis=1)
+
+def infer(x, meta):
+    c = [a_tuple[0] for a_tuple in meta]
+    r = [a_tuple[-1] for a_tuple in meta]
+    snake = active_contour(x, np.array([r, c]).T, alpha=0.015, beta=10, gamma=0.001)
+    return snake, snake, snake

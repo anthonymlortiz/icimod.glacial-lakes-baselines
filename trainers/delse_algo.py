@@ -7,7 +7,6 @@ class DelseAlgo(Algorithm):
     def __init__(self, model, loss, optimizer, metrics, opts):
         super().__init__(model, loss, optimizer, metrics, opts)
         self.epoch = 0
-        self.epsilon = opts.delse_epsilon
         self.model = model
         self.pretrain_epoch = opts.delse_pretrain
 

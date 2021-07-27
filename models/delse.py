@@ -13,6 +13,7 @@ class DelseModel(nn.Module):
     def __init__(self, opts):
         super().__init__()
         self.T = opts.delse_iterations
+        self.epsilon = opts.delse_epsilon
         self.dt_max = opts.dt_max
         self.input_channels = opts.input_channels
         n_classes = (1, 2, 1)
@@ -47,7 +48,8 @@ class DelseModel(nn.Module):
     def infer(self, x, meta):
         with torch.no_grad():
             phi_0, energy, g = self.forward(x, meta)
-            probs = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
+            phi_T = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
+            probs = lse.Heaviside(phi_T, epsilon=self.epsilon)
             return torch.argmax(probs, dim=1), probs, (phi_0, energy, g)
 
 

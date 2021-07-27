@@ -1,4 +1,4 @@
-from trainers.train_framework import Algorithm
+from trainers.algorithm import Algorithm
 from utils import lse
 import numpy as np
 

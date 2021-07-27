@@ -129,7 +129,7 @@ def save_raster(z, meta, transform, path, exist_ok=True):
         f.write(z.astype(np.float32))
 
 
-def inference_paths(x_dir, meta_dir, infer_dir):
+def inference_paths(x_dir, meta_dir, infer_dir, subset_size=None):
     fn = list(pathlib.Path(x_dir).glob("*tif"))
     meta_fn = list(pathlib.Path(meta_dir).glob("*tif"))
     fn.sort(), meta_fn.sort()
@@ -137,7 +137,7 @@ def inference_paths(x_dir, meta_dir, infer_dir):
     out_fn_y = [infer_dir / (f.stem + "-pred.tif") for f in fn]
     out_fn_prob = [infer_dir / (f.stem + "-prob.tif") for f in fn]
 
-    return pd.DataFrame({
+    result = pd.DataFrame({
         "sample_id": [f.stem for f in fn],
         "GLID": [f.stem.split()[0] for f in fn],
         "fn": fn,
@@ -145,6 +145,10 @@ def inference_paths(x_dir, meta_dir, infer_dir):
         "out_fn_y": out_fn_y,
         "out_fn_prob": out_fn_prob
     }).set_index("sample_id")
+
+    if subset_size is not None:
+        result = result[:subset_size]
+    return result
 
 
 def eval_paths(infer_dir):

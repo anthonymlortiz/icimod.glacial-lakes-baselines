@@ -24,6 +24,7 @@ class BaseOptions():
         parser.add_argument('--verbose', action='store_true', help='if set, print info while training')
         parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
         parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
+        parser.add_argument('--subset_size', type=int, default=None, help='Size of dataset subsample, for debugging purposes')
 
         # input/output settings
         parser.add_argument('--input_channels', type=int, default=11, help='Number of channel in the input images')
@@ -38,7 +39,7 @@ class BaseOptions():
         parser.add_argument('--dt_max', type=int, default=10, help='Maximum gradient in DELSE update?')
         parser.add_argument('--delse_pth', type=str, default="/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth", help='Path to pretrained model for DELSE')
         parser.add_argument('--delse_pretrain', type=int, default=5, help='How many iterations of DELSE to pretrain all losses?')
-        parser.add_argument('--delse_epsilon', type=float, default=.01, help='Epsilon parameter in Heaviside approximation.')
+        parser.add_argument('--delse_epsilon', type=float, default=-1, help='Epsilon parameter in Heaviside approximation.')
 
         self.initialized = True
         self.isTrain = False

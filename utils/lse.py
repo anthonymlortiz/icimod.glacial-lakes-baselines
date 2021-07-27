@@ -5,8 +5,7 @@ from torch.nn import functional as F
 
 def Heaviside(v, epsilon=-1/2):
     pi = 3.141593
-    v = 0.5 * (1 + 2/pi * torch.atan(v/epsilon))
-    return v
+    return 0.5 * (1 + 2/pi * torch.atan(v/epsilon))
 
 
 def Dirac(x, sigma=0.2, dt_max=30):

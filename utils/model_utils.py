@@ -177,15 +177,20 @@ def blur_raster(x, sigma=2, threshold=0.5):
 
 
 def polygonize_preds(y_hat, crop_region, tol=25e-5):
+    # if no polygon, just return the center of the prediction region
+    centroid = gpd.GeoDataFrame(geometry=[box(*y_hat.bounds).centroid])
+
     # get features from probability and overlay onto crop region
     ft = list(rf.dataset_features(blur_raster(y_hat), as_mask=True))
     ft = gpd.GeoDataFrame.from_features(ft)
-    crop_region = gpd.GeoDataFrame(geometry=[crop_region])
-    result = gpd.overlay(crop_region, ft).simplify(tolerance=tol)
+    if len(ft) == 0:
+        return centroid
 
-    # if no polygon, just return the center of the prediction region
+    crop_region = gpd.GeoDataFrame(geometry=[crop_region])
+    result = gpd.overlay(ft, crop_region).simplify(tolerance=tol)
+
     if len(result) == 0:
-        return gpd.GeoDataFrame(geometry=[box(*y_hat.bounds).centroid])
+        return centroid
     return gpd.GeoDataFrame(geometry=result)
 
 

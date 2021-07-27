@@ -151,19 +151,22 @@ def inference_gen(pred_fun, processor, postprocessor, **kwargs):
 def processor_test(fn, meta_fn, stats_fn, device, out=(1024, 1024), **kwargs):
     x = rasterio.open(fn).read()
     meta = rasterio.open(meta_fn).read()
+
     x = np.transpose(x, (1, 2, 0))
     x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
+    meta_ = np.pad(meta, ((0, 0), (0, out[0] - meta.shape[1]), (0, out[1] - meta.shape[2])))
 
     id = Path(fn).stem
     x_ = image_transforms(x_, stats_fn, id).to(device).unsqueeze(0)
-    return x_, meta, {"dim": x.shape}
+    meta_ = torch.from_numpy(meta_).to(device).unsqueeze(0)
+    return x_, meta_, {"dim": x.shape}
 
 
 def postprocessor_test(y_hat, probs, pre, **kwargs):
-    y_hat = y_hat[:, :pre["dim"][0], :pre["dim"][1]]
+    y_hat = y_hat[None, :, :pre["dim"][0], :pre["dim"][1]]
     probs = probs[:, :, :pre["dim"][0], :pre["dim"][1]]
-    cpu = lambda x: x.cpu().numpy().squeeze()
-    return cpu(y_hat)[np.newaxis], cpu(probs)
+    cpu = lambda x: x.cpu().numpy().squeeze(0)
+    return cpu(y_hat), cpu(probs)
 
 
 def blur_raster(x, sigma=2, threshold=0.5):
@@ -192,4 +195,4 @@ def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
 
     y_ = y_.sum(axis=0, keepdims=True)
     y_hat_ = y_hat_.sum(axis=0, keepdims=True)
-    return {k: v(y_hat_, y_) for k, v in metrics.items()}
+    return {k: m(y_hat_, y_).item() for k, m in metrics.items()}

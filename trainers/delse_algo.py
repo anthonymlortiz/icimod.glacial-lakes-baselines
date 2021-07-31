@@ -14,7 +14,7 @@ class DelseAlgo(Algorithm):
     def objective(self, y, outputs, meta):
         y = y.unsqueeze(1)
         (phi_0, energy, g) = outputs
-        sdt = meta[:, 2:3]  # signed distance transform
+        sdt = meta[:, 2:3] # signed distance transform
         vfs = lse.gradient(y, split=False)
         shift = 10 * np.random.rand() - 5
 
@@ -28,9 +28,6 @@ class DelseAlgo(Algorithm):
 
         # return losses
         losses = self.loss(y, phi_0, sdt, energy, vfs, phi_T)
-        if self.iter % 10 == 0:
-            np.save(f"phi_{self.iter}.pt", phi_T.detach().cpu().numpy())
-            np.save(f"y_{self.iter}.pt", y.cpu().numpy())
         if self.iter > self.pretrain_iter:
             losses = [losses[-1]]
         return sum(losses)

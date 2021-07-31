@@ -52,7 +52,6 @@ class DelseModel(nn.Module):
             probs = lse.Heaviside(phi_T, epsilon=self.epsilon)
             return torch.argmax(probs, dim=1), probs, (phi_0, energy, g)
 
-
 def weight_init(model):
     for m in model.modules():
         if isinstance(m, nn.Conv2d):
@@ -60,7 +59,6 @@ def weight_init(model):
         elif isinstance(m, nn.BatchNorm2d):
             m.weight.data.fill_(1)
             m.bias.data.zero_()
-
 
 def outS(i):
     i = int(i)

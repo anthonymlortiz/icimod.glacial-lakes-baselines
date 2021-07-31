@@ -102,21 +102,18 @@ def levelset_evolution(phi, vf, g=None, T=5, timestep=5, dirac=0.3, dt_max=30):
         [phi_y, phi_x] = gradient(phi, split=True)
         s = torch.sqrt(torch.pow(phi_x, 2) + torch.pow(phi_y, 2) + 1e-10)
         curvature = div(phi_x / s, phi_y / s)
-        diracPhi = Dirac(phi, dirac)
+        diracPhi = Dirac(phi, dirac, dt_max)
         motion_term = vx * phi_x + vy * phi_y
 
-        phi += timestep * diracPhi * (motion_term + g * curvature.detach())
-        phi += 0.2 * distReg_p2(phi.detach())
+        phi = phi + timestep * diracPhi * (motion_term + g * curvature.detach())
+        phi = phi + 0.2 * distReg_p2(phi.detach())
     return phi
 
+
 # Training utilities for LSE model
-
-
 def mean_square_loss(y_hat, y, alpha=1):
     assert (y_hat.size() == y.size())
-    mse = lambda x: torch.mean(torch.pow(x, 2))
-    sdt_loss = mse(y - y_hat)
-    return alpha * sdt_loss
+    return alpha * torch.mean(torch.pow(y - y_hat, 2))
 
 
 def balanced_bce(outputs, labels):
@@ -133,7 +130,6 @@ def balanced_bce(outputs, labels):
 
 
 def vector_field_loss(vf_pred, vf_gt):
-    # (n_batch, n_channels, H, W)
     vf_pred = F.normalize(vf_pred, p=2, dim=1)
     vf_gt = F.normalize(vf_gt.float(), p=2, dim=1)
     cos_dist = torch.sum(torch.mul(vf_pred, vf_gt), dim=1)
@@ -141,7 +137,7 @@ def vector_field_loss(vf_pred, vf_gt):
     return torch.mean(torch.pow(angle_error, 2))
 
 
-def LSE_loss(phi_T, gts, sdts, epsilon=-1, eta=100):
+def LSE_loss(phi_T, gts, sdts, epsilon=-1, eta=10):
     return eta * balanced_bce(Heaviside(phi_T, epsilon=epsilon), gts)
 
 

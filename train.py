@@ -52,7 +52,7 @@ else:
 if opts.optimizer == "adam":
     optimizer = torch.optim.Adam(params, lr=opts.lr, betas=(opts.beta1, opts.beta2))
 if opts.optimizer == "sgd":
-    optimizer = torch.optim.SGD(params, lr=opts.lr, momentum=0.9)
+    optimizer = torch.optim.SGD(params, lr=opts.lr, momentum=0.9, weight_decay=1e-6)
 
 metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
 if opts.model == "unet":

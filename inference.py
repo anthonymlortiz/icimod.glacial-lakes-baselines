@@ -38,16 +38,15 @@ else:
     # function that will do inference
     base = Path(opts.data_dir)
     pred_fun = mu.inference_gen(
-
-    model.infer,
-    mu.processor_raster,
-    mu.postprocessor_raster,
-    device=opts.device
+        model.infer,
+        mu.processor_raster,
+        mu.postprocessor_raster,
+        device=opts.device
     )
 
 
 base = Path(opts.data_dir)
-stats_fn = base / "statistics.csv" 
+stats_fn = base / "statistics.csv"
 
 # get paths and run inference
 infer_paths = dt.inference_paths(

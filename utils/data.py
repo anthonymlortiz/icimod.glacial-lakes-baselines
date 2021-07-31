@@ -1,12 +1,14 @@
 import numpy as np
 import random
 import cv2
+import csv
 import rasterio.mask
 import geopandas as gpd
 import shapely.geometry as sg
 import pathlib
 import pandas as pd
 from scipy import ndimage
+from tqdm import tqdm
 
 
 def extreme_points(mask, pert=0):
@@ -157,3 +159,27 @@ def eval_paths(infer_dir):
         "path": fn,
         "sample_id": [str(f.stem).replace("-pred", "") for f in fn]
     })
+
+def preprocess_dir(in_dir, y):
+    if (in_dir / "images").exists():
+        shutil.rmtree(in_dir / "images")
+        shutil.rmtree(in_dir / "labels")
+    (in_dir / "images").mkdir(parents=True)
+    (in_dir / "meta").mkdir(parents=True)
+
+    scene_list = list(in_dir.glob("*.tif"))
+    fields = ["scene"] + sum([[f"{s}_{i}" for i in range(11)] for s in ["mean", "sdev"]], [])
+    f = open(in_dir / "statistics.csv", "a")
+    writer = csv.writer(f)
+    writer.writerow(fields)
+
+    print(f"preprocessing {in_dir}")
+    for scene in tqdm(scene_list):
+        img = rasterio.open(scene)
+        mean, std, label, meta = preprocessor(img, y)
+        save_raster(label, img.meta, img.transform, in_dir / f"labels/{scene.stem}-labels.tif")
+        save_raster(meta, img.meta, img.transform, in_dir / f"meta/{scene.stem}-meta.tif")
+        writer.writerow([str(scene.stem)] + list(np.hstack([mean, std])))
+
+    f.close()
+    [shutil.move(str(s), in_dir / "images") for s in scene_list]

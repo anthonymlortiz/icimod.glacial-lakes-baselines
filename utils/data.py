@@ -50,18 +50,18 @@ def gaussian_convolve(dim, p, sigma=10):
     return gt
 
 
-def sdt_i(yi, dt_max=30):
+def sdt_i(yi, dist_max=10):
     p = cv2.findContours(yi.copy().astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2]
     contours = cv2.drawContours(np.zeros(yi.shape), p, -1, 1)
     dt = ndimage.distance_transform_edt(contours == 0)
 
     sdt = dt.copy()
-    sdt[sdt > dt_max] = dt_max
+    sdt[sdt > dist_max] = dist_max
     sdt[yi > 0] *= -1
     return dt, sdt
 
 
-def sdt(y, dt_max=30):
+def sdt(y, dist_max=10):
     dts, sdts = np.zeros(y.shape), np.zeros(y.shape)
     for i, yi in enumerate(y):
         dts[i], sdts[i] = sdt_i(yi, dt_max)
@@ -109,8 +109,8 @@ def preprocessor(img, y):
     y, extreme_polys = mask(y, img)
     dist, signed_dist = sdt(y)
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
-    sums = [z.sum(0) for z in [y, extreme_hm, dist, signed_dist]]
-    y, meta = sums[0][np.newaxis, ...], np.stack(sums[1:])
+    maxes = [z.max(0) for z in [y, extreme_hm, dist, signed_dist]]
+    y, meta = maxes[0][np.newaxis, ...], np.stack(maxes[1:])
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 
@@ -129,7 +129,7 @@ def save_raster(z, meta, transform, path, exist_ok=True):
         f.write(z.astype(np.float32))
 
 
-def inference_paths(x_dir, meta_dir, infer_dir):
+def inference_paths(x_dir, meta_dir, infer_dir, subset_size=None):
     fn = list(pathlib.Path(x_dir).glob("*tif"))
     meta_fn = list(pathlib.Path(meta_dir).glob("*tif"))
     fn.sort(), meta_fn.sort()
@@ -137,7 +137,7 @@ def inference_paths(x_dir, meta_dir, infer_dir):
     out_fn_y = [infer_dir / (f.stem + "-pred.tif") for f in fn]
     out_fn_prob = [infer_dir / (f.stem + "-prob.tif") for f in fn]
 
-    return pd.DataFrame({
+    result = pd.DataFrame({
         "sample_id": [f.stem for f in fn],
         "GLID": [f.stem.split()[0] for f in fn],
         "fn": fn,
@@ -145,6 +145,10 @@ def inference_paths(x_dir, meta_dir, infer_dir):
         "out_fn_y": out_fn_y,
         "out_fn_prob": out_fn_prob
     }).set_index("sample_id")
+
+    if subset_size is not None:
+        result = result[:subset_size]
+    return result
 
 
 def eval_paths(infer_dir):

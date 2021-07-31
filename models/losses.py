@@ -152,11 +152,12 @@ class DelseLoss(nn.Module):
     """Loss used in DELSE
     """
 
-    def __init__(self, epsilon=1):
+    def __init__(self, epsilon=1, alpha=1):
         super(DelseLoss, self).__init__()
         self.epsilon = epsilon
+        self.alpha = alpha
 
     def __call__(self, y, phi_0, sdt, energy, vfs, phi_T):
-        return [1e-3 * lse.mean_square_loss(phi_0, sdt),
+        return [self.alpha * lse.mean_square_loss(phi_0, sdt),
                 lse.vector_field_loss(energy, vfs),
                 lse.LSE_loss(phi_T, y, sdt, self.epsilon)]

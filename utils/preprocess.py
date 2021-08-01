@@ -26,6 +26,9 @@ ids = {}
 for split in basin_mapping.keys():
     ids[split] = list(y[y.Sub_Basin.isin(basin_mapping[split])].GL_ID.values)
 
+    if opts.subset_size is not None:
+        ids[split] = ids[split][:opts.subset_size]
+
 for path in in_dir.glob("*tif"):
     for split in ids.keys():
         for i in ids[split]:

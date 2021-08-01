@@ -45,12 +45,12 @@ class DelseModel(nn.Module):
         phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
         return phi_0, energy, torch.sigmoid(g)
 
-    def infer(self, x, meta):
+    def infer(self, x, meta, threshold=0.4):
         with torch.no_grad():
             phi_0, energy, g = self.forward(x, meta)
             phi_T = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
-            probs = lse.Heaviside(phi_T, epsilon=self.epsilon)
-            return torch.argmax(probs, dim=1), probs, (phi_0, energy, g)
+            probs = 1 - lse.Heaviside(phi_T, epsilon=self.epsilon)
+            return 1. * (probs > threshold), probs, (phi_0, energy, g)
 
 def weight_init(model):
     for m in model.modules():

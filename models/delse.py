@@ -49,7 +49,7 @@ class DelseModel(nn.Module):
         with torch.no_grad():
             phi_0, energy, g = self.forward(x, meta)
             phi_T = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
-            probs = 1 - lse.Heaviside(phi_T, epsilon=self.epsilon)
+            probs = lse.Heaviside(phi_T, epsilon=self.epsilon)
             return 1. * (probs[:,   0] > threshold), probs, (phi_0, energy, g)
 
 def weight_init(model):

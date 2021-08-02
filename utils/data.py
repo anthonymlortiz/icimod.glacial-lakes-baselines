@@ -1,12 +1,12 @@
 import numpy as np
 import random
-import cv2
 import csv
 import rasterio.mask
 import geopandas as gpd
 import shapely.geometry as sg
 import pathlib
 import pandas as pd
+import shutil
 from scipy import ndimage
 from tqdm import tqdm
 
@@ -53,20 +53,17 @@ def gaussian_convolve(dim, p, sigma=10):
 
 
 def sdt_i(yi, dist_max=10):
-    p = cv2.findContours(yi.copy().astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2]
-    contours = cv2.drawContours(np.zeros(yi.shape), p, -1, 1)
-    dt = ndimage.distance_transform_edt(contours == 0)
-
-    sdt = dt.copy()
+    dt_inner = ndimage.distance_transform_edt(yi.copy() == 0)
+    dt_outer = ndimage.distance_transform_edt(yi.copy() == 1)
+    sdt = dt_inner - dt_outer
     sdt[sdt > dist_max] = dist_max
-    sdt[yi > 0] *= -1
-    return dt, sdt
+    return dt_outer, -sdt
 
 
 def sdt(y, dist_max=10):
     dts, sdts = np.zeros(y.shape), np.zeros(y.shape)
     for i, yi in enumerate(y):
-        dts[i], sdts[i] = sdt_i(yi, dt_max)
+        dts[i], sdts[i] = sdt_i(yi, dist_max)
     return dts, sdts
 
 

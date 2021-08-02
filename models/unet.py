@@ -86,4 +86,4 @@ class UnetModel(BaseNetwork):
     def infer(self, x, meta=None, threshold=0.4):
         with torch.no_grad():
             probs = self.forward(x, meta)
-            return torch.argmax(probs, dim=1), probs, probs
+            return 1. * (probs[:, 1] > threshold), probs, probs

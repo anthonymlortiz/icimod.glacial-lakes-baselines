@@ -51,7 +51,7 @@ def get_image_transforms():
     return image_transforms
 
 
-def image_transforms(img, stats_fn, id): #, stats_fn, id):
+def image_transforms(img, stats_fn, id):
     mean, std = get_imagery_statistics(stats_fn, id)
 
     img = (img - mean) / std
@@ -79,7 +79,6 @@ def load_dataset(opts):
     train_label_fns.sort()
     train_meta_fns.sort()
 
-    stats_fn = get_stats_fn(opts.data_dir, "train", opts.dataset)
 
     val_img_fns = get_imagery_fns(opts.data_dir, "val", opts.dataset)
     val_label_fns = get_labels_fns(opts.data_dir , "val", opts.dataset)
@@ -94,8 +93,9 @@ def load_dataset(opts):
         val_img_fns = val_img_fns[:opts.subset_size]
         val_meta_fns = val_meta_fns[:opts.subset_size]
 
-    stats_fn = get_stats_fn(opts.data_dir, "val", opts.dataset)
+    stats_fn = get_stats_fn(opts.data_dir, "train", opts.dataset)
     trn = StreamingGeospatialDataset(train_img_fns, stats_fn, train_label_fns,train_meta_fns,  groups=train_img_fns, chip_size=opts.chip_size, num_chips_per_tile=10, image_transform=img_transforms, verbose=False)
+    stats_fn = get_stats_fn(opts.data_dir, "val", opts.dataset)
     val = StreamingGeospatialDataset(val_img_fns, stats_fn, val_label_fns, val_meta_fns, groups=val_img_fns, chip_size=opts.chip_size, num_chips_per_tile=5, image_transform=img_transforms, verbose=False)
 
     trn_loader = torch.utils.data.DataLoader(trn, batch_size=opts.batch_size, num_workers=opts.num_workers, pin_memory=True)

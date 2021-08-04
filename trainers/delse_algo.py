@@ -15,7 +15,7 @@ class DelseAlgo(Algorithm):
         y = y.unsqueeze(1)
         (phi_0, energy, g) = outputs
         sdt = meta[:, 2:3] # signed distance transform
-        vfs = lse.gradient(y, split=False)
+        vfs = lse.gradient(meta[:, 1:2], split=False)
         shift = 10 * np.random.rand() - 5
 
         # compute evolution

@@ -158,6 +158,7 @@ class DelseLoss(nn.Module):
         self.alpha = alpha
 
     def __call__(self, y, phi_0, sdt, energy, vfs, phi_T):
+
         return [self.alpha * lse.mean_square_loss(phi_0, sdt),
                 lse.vector_field_loss(energy, vfs),
                 lse.LSE_loss(phi_T, y, sdt, self.epsilon)]

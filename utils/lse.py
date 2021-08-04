@@ -105,8 +105,8 @@ def levelset_evolution(phi, vf, g=None, T=5, timestep=5, dirac=0.3, dt_max=30):
         diracPhi = Dirac(phi, dirac, dt_max)
         motion_term = vx * phi_x + vy * phi_y
 
-        phi = phi + timestep * diracPhi * (motion_term + g * curvature.detach())
-        phi = phi + 0.2 * distReg_p2(phi.detach())
+        phi += timestep * diracPhi * (motion_term + g * curvature.detach())
+        phi += 0.2 * distReg_p2(phi.detach())
     return phi
 
 

@@ -52,15 +52,20 @@ def gaussian_convolve(dim, p, sigma=10):
     return gt
 
 
-def sdt_i(yi, dist_max=10):
+def sdt_i(yi, dist_max=30):
     dt_inner = ndimage.distance_transform_edt(yi.copy() == 0)
     dt_outer = ndimage.distance_transform_edt(yi.copy() == 1)
+    dt = dt_inner + dt_outer
     sdt = dt_inner - dt_outer
+
+    # truncate at dist_max
+    dt[dt > dist_max] = dist_max
     sdt[sdt > dist_max] = dist_max
-    return dt_outer, -sdt
+    sdt[sdt < -dist_max] = -dist_max
+    return -dt, -sdt
 
 
-def sdt(y, dist_max=10):
+def sdt(y, dist_max=30):
     dts, sdts = np.zeros(y.shape), np.zeros(y.shape)
     for i, yi in enumerate(y):
         dts[i], sdts[i] = sdt_i(yi, dist_max)
@@ -132,6 +137,9 @@ def inference_paths(x_dir, meta_dir, infer_dir, subset_size=None):
     fn = list(pathlib.Path(x_dir).glob("*tif"))
     meta_fn = list(pathlib.Path(meta_dir).glob("*tif"))
     fn.sort(), meta_fn.sort()
+
+    if len(fn) != len(meta_fn):
+        raise ArgumentError("The number of files in --meta_dir and --x_dir must be equal, so that image and metadata can be matched.")
 
     out_fn_y = [infer_dir / (f.stem + "-pred.tif") for f in fn]
     out_fn_prob = [infer_dir / (f.stem + "-prob.tif") for f in fn]

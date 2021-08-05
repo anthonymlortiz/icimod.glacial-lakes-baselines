@@ -103,7 +103,7 @@ def levelset_evolution(phi, vf, g=None, T=5, timestep=5, dirac=0.3, dt_max=30):
         s = torch.sqrt(torch.pow(phi_x, 2) + torch.pow(phi_y, 2) + 1e-10)
         curvature = div(phi_x / s, phi_y / s)
         diracPhi = Dirac(phi, dirac, dt_max)
-        motion_term = vx * phi_x + vy * phi_y
+        motion_term = -(vx * phi_x + vy * phi_y)
 
         phi += timestep * diracPhi * (motion_term + g * curvature.detach())
         phi += 0.2 * distReg_p2(phi.detach())

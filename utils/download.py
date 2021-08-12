@@ -32,7 +32,7 @@ def to_square(polygon):
 def fetch_hrefs(catalog, aoi, time_range, max_cloud=100, max_nodata=100):
     search = catalog.search(
         collections=["sentinel-2-l2a"],
-        intersects=aoi,
+        bbox=aoi.bounds,
         datetime=time_range,
         query={
             "eo:cloud_cover": {"lt": max_cloud},
@@ -49,14 +49,17 @@ def fetch_hrefs(catalog, aoi, time_range, max_cloud=100, max_nodata=100):
 
 
 def download(catalog, geom, time_range, buffer=0.001, **kwargs):
-    href, props = fetch_hrefs(catalog, geom, time_range, **kwargs)
     geom = to_square(geom.buffer(buffer))
+    href, props = fetch_hrefs(catalog, geom, time_range, **kwargs)
     geom = rw.transform_geom("epsg:4326", f"epsg:{props['proj:epsg']}", geom)
 
     with rasterio.Env(**RASTERIO_BEST_PRACTICES):
         with rasterio.open(href) as f:
             image, transform = rasterio.mask.mask(f, [geom], crop=True, invert=False, pad=False, all_touched=True)
             meta = f.meta
+
+        if np.all(image) == 0 or np.all(image) == 255:
+            raise ValueError("Returned a nodata patch")
 
     return image, meta, transform, props
 

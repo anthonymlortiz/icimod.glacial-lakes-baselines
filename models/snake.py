@@ -60,23 +60,7 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
     .. [1]  Kass, M.; Witkin, A.; Terzopoulos, D. "Snakes: Active contour
             models". International Journal of Computer Vision 1 (4): 321
             (1988). :DOI:`10.1007/BF00133570`
-    Examples
-    --------
-    >>> from skimage.draw import circle_perimeter
-    >>> from skimage.filters import gaussian
-    Create and smooth image:
-    >>> img = np.zeros((100, 100))
-    >>> rr, cc = circle_perimeter(35, 45, 25)
-    >>> img[rr, cc] = 1
-    >>> img = gaussian(img, 2, preserve_range=False)
-    Initialize spline:
-    >>> s = np.linspace(0, 2*np.pi, 100)
-    >>> init = 50 * np.array([np.sin(s), np.cos(s)]).T + 50
-    Fit spline to image:
-    >>> snake = active_contour(img, init, w_edge=0, w_line=1, coordinates='rc')  # doctest: +SKIP
-    >>> dist = np.sqrt((45-snake[:, 0])**2 + (35-snake[:, 1])**2)  # doctest: +SKIP
-    >>> int(np.mean(dist))  # doctest: +SKIP
-    25
+
     """
     max_num_iter = int(max_num_iter)
     if max_num_iter <= 0:
@@ -215,5 +199,5 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
 def infer(x, meta):
     c = [a_tuple[0] for a_tuple in meta]
     r = [a_tuple[-1] for a_tuple in meta]
-    snake = active_contour(x, np.array([r, c]).T, alpha=0.015, beta=10, gamma=0.001)
+    snake = active_contour(x, np.array([r, c]).T, max_num_iter=10)
     return snake, snake, snake

@@ -14,13 +14,11 @@ import numpy as np
 import os
 import pickle
 import rasterio
-<<<<<<< HEAD
 import rasterio.features as rf
 import shutil
 import tempfile
 import torch
 import utils.metrics as mt
-=======
 import sys
 sys.path.append("..")
 from data.dataloader import image_transforms
@@ -28,8 +26,6 @@ from scipy.ndimage import gaussian_filter
 import fiona
 from shapely.geometry import box
 from shapely.geometry import Polygon
->>>>>>> adding active contours as baseline and to inference
-
 
 class LocalContextNorm(nn.Module):
     def __init__(self, num_features, channels_per_group=2, window_size=(227, 227), eps=1e-5):

@@ -13,6 +13,7 @@ class DelseModel(nn.Module):
     def __init__(self, opts):
         super().__init__()
         self.T = opts.delse_iterations
+        self.epsilon = opts.delse_epsilon
         self.dt_max = opts.dt_max
         self.input_channels = opts.input_channels
         n_classes = (1, 2, 1)
@@ -44,12 +45,12 @@ class DelseModel(nn.Module):
         phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
         return phi_0, energy, torch.sigmoid(g)
 
-    def infer(self, x, meta):
+    def infer(self, x, meta, threshold=0.4):
         with torch.no_grad():
             phi_0, energy, g = self.forward(x, meta)
-            probs = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
-            return torch.argmax(probs, dim=1), probs, (phi_0, energy, g)
-
+            phi_T = lse.levelset_evolution(phi_0, energy, g, self.T, self.dt_max)
+            probs = lse.Heaviside(phi_T, epsilon=self.epsilon)
+            return 1. * (probs[:,   0] > threshold), probs, (phi_0, energy, g)
 
 def weight_init(model):
     for m in model.modules():
@@ -58,7 +59,6 @@ def weight_init(model):
         elif isinstance(m, nn.BatchNorm2d):
             m.weight.data.fill_(1)
             m.bias.data.zero_()
-
 
 def outS(i):
     i = int(i)

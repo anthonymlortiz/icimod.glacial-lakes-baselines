@@ -4,13 +4,13 @@ import os
 import torch
 import utils.metrics as mt
 from trainers import train_funs
-from trainers.train_framework import Algorithm
-from trainers.examples import DelseAlgo
+from trainers.algorithm import Algorithm
+from trainers.delse_algo import DelseAlgo
 from models import losses
 from options.train_options import TrainOptions
 from data.dataloader import load_dataset
 from models.unet import UnetModel
-from models.networks import DelseModel
+from models.delse import DelseModel
 from tensorboardX import SummaryWriter
 from pathlib import Path
 from warnings import warn, filterwarnings
@@ -44,7 +44,7 @@ if opts.loss == "ce":
 elif opts.loss == "wbce":
     loss = losses.WeightedBCELoss()
 elif opts.loss == "delse":
-    loss = losses.DelseLoss()
+    loss = losses.DelseLoss(opts.delse_epsilon)
 else:
     assert NotImplementedError, f"Option {opts.loss} not supported. Available options: ce, wbce"
 
@@ -52,7 +52,7 @@ else:
 if opts.optimizer == "adam":
     optimizer = torch.optim.Adam(params, lr=opts.lr, betas=(opts.beta1, opts.beta2))
 if opts.optimizer == "sgd":
-    optimizer = torch.optim.SGD(params, lr=opts.lr, momentum=0.9)
+    optimizer = torch.optim.SGD(params, lr=opts.lr, momentum=0.9, weight_decay=1e-6)
 
 metrics = {"IoU": mt.IoU, "precision": mt.precision, "recall": mt.recall}
 if opts.model == "unet":

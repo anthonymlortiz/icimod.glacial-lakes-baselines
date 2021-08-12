@@ -9,7 +9,7 @@ import pandas as pd
 import rasterio
 from tqdm import tqdm
 from models.unet import UnetModel
-from models.networks import DelseModel
+from models.delse import DelseModel
 from pathlib import Path
 from warnings import warn, filterwarnings
 filterwarnings("ignore", category=UserWarning)
@@ -38,22 +38,22 @@ else:
     # function that will do inference
     base = Path(opts.data_dir)
     pred_fun = mu.inference_gen(
-
-    model.infer,
-    mu.processor_raster,
-    mu.postprocessor_raster,
-    device=opts.device
+        model.infer,
+        mu.processor_raster,
+        mu.postprocessor_raster,
+        device=opts.device
     )
 
 
 base = Path(opts.data_dir)
-stats_fn = base / "statistics.csv" 
+stats_fn = base / "statistics.csv"
 
 # get paths and run inference
 infer_paths = dt.inference_paths(
     base / opts.x_dir,
     base / opts.meta_dir,
-    Path(opts.inference_dir)
+    Path(opts.inference_dir),
+    opts.subset_size
 )
 
 for _, (_, fn, meta_fn, out_fn_y, out_fn_prob) in tqdm(infer_paths.iterrows(), total=len(infer_paths)):

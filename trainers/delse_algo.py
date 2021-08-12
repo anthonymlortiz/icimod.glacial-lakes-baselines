@@ -15,16 +15,15 @@ class DelseAlgo(Algorithm):
         y = y.unsqueeze(1)
         (phi_0, energy, g) = outputs
         sdt = meta[:, 2:3] # signed distance transform
-        vfs = -lse.gradient(meta[:, 1:2], split=False)
-        shift = 10 * np.random.rand() - 5
+        vfs = lse.gradient(meta[:, 1:2], split=False)
+        init = 10 * np.random.rand() - 5
 
         # compute evolution
         if self.iter < self.pretrain_iter:
-            phi_T = lse.levelset_evolution(sdt + shift, energy, g,
-                                           self.model.T, self.model.dt_max)
+            init += sdt
         else:
-            phi_T = lse.levelset_evolution(phi_0 + shift, energy, g,
-                                           self.model.T, self.model.dt_max)
+            init += phi_0
+        phi_T = lse.levelset_evolution(init, energy, g, self.model.T, self.model.dt_max)
 
         # return losses
         losses = self.loss(y, phi_0, sdt, energy, vfs, phi_T)

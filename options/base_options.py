@@ -39,7 +39,7 @@ class BaseOptions():
         parser.add_argument('--dt_max', type=int, default=30, help='Maximum gradient in DELSE update?')
         parser.add_argument('--delse_pth', type=str, default="/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth", help='Path to pretrained model for DELSE')
         parser.add_argument('--delse_pretrain', type=int, default=1200, help='How many iterations of DELSE to pretrain all losses?')
-        parser.add_argument('--delse_epsilon', type=float, default=1, help='Epsilon parameter in Heaviside approximation.')
+        parser.add_argument('--delse_epsilon', type=float, default=-1/2, help='Epsilon parameter in Heaviside approximation.')
 
         self.initialized = True
         self.isTrain = False

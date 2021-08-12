@@ -51,13 +51,15 @@ writer = csv.writer(f)
 writer.writerow(fields)
 
 for lake_id in tqdm(lakes.index):
-    geom = lakes.loc[lake_id]["geometry"]
-
     for year in range(2015, 2022):
         for month in range(1, 13):
-            out_path = opts.save_dir / f"{lake_id}-{year}{month:02}.tif"
+            if year == 2015 and month < 6:
+                continue
             if year == 2022 and month > 8:
                 continue
+
+            geom = lakes.loc[lake_id]["geometry"]
+            out_path = opts.save_dir / f"{lake_id}-{year}{month:02}.tif"
 
             try:
                 last_day = monthrange(year, month)[1]
@@ -75,7 +77,8 @@ for lake_id in tqdm(lakes.index):
                 tmp = [Path(NamedTemporaryFile().name) for _ in range(2)]
                 udt.save_raster(image, meta, transform, out_path)
                 udt.save_raster(image, meta, transform, tmp[0])
-                udl.upscale(tmp[0], tmp[1], opts.resize / image.shape[1])
+                scale = max(opts.resize / image.shape[1], opts.resize / image.shape[2])
+                udl.upscale(tmp[0], tmp[1], scale)
 
                 # warp the image and save as a raster
                 gdal.Warp(str(out_path), gdal.Open(str(tmp[1])), dstSRS="EPSG:4326")
@@ -84,7 +87,7 @@ for lake_id in tqdm(lakes.index):
                 # save the metadata
                 writer.writerow([str(out_path.stem)] + [props[s] for s in fields[3:]])
 
-            except ValueError as e:
+            except:
                 writer.writerow([str(out_path.stem)])
 
 f.close()

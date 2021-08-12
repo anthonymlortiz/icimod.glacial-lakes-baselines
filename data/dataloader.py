@@ -27,8 +27,8 @@ def get_fns_from_suffix(base_dir, split, dataset, suffix):
     if suffix == "statistics.csv":
         if dataset.lower() == 'bing':
             return os.path.join(base_dir+"/bing/splits/"+split+"/", suffix)
-        if dataset.lower() == 'landsat':
-            return os.path.join(base_dir+"/le7-2015/splits/"+split+"/", suffix)
+        if dataset.lower() == 'sentinel':
+            return os.path.join(base_dir+"/sentinel/splits/"+split+"/", suffix)
         if dataset.lower() == 'maxar':
             return os.path.join(base_dir+"/maxar/splits/"+split+"/", suffix)
         else:
@@ -36,8 +36,8 @@ def get_fns_from_suffix(base_dir, split, dataset, suffix):
     else:
         if dataset.lower() == 'bing':
             return glob.glob(base_dir+"/bing/splits/"+split + suffix)
-        if dataset.lower() == 'landsat':
-            return glob.glob(base_dir+"/le7-2015/splits/"+split + suffix)
+        if dataset.lower() == 'sentinel':
+            return glob.glob(base_dir+"/sentinel/splits/"+split + suffix)
         if dataset.lower() == 'maxar':
             return glob.glob(base_dir+"/maxar/splits/"+split+ suffix)
         else:

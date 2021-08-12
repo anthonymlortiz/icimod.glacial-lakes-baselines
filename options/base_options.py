@@ -22,7 +22,7 @@ class BaseOptions():
         parser.add_argument('--model', type=str, default='unet', help='which initialization method to use [unet | delse ]')
         parser.add_argument('--phase', type=str, default='train', help='model phase [train | test]')
         parser.add_argument('--verbose', action='store_true', help='if set, print info while training')
-        parser.add_argument('--dataset', type=str, default='landsat', help='model phase [bing | landsat | maxar]')
+        parser.add_argument('--dataset', type=str, default='bing', help='model phase [bing | sentinel | maxar]')
         parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
         parser.add_argument('--subset_size', type=int, default=None, help='Size of dataset subsample, for debugging purposes')
 

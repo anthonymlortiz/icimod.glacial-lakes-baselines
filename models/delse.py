@@ -15,7 +15,8 @@ class DelseModel(nn.Module):
         self.T = opts.delse_iterations
         self.epsilon = opts.delse_epsilon
         self.dt_max = opts.dt_max
-        self.full_model = backend_cnn_model(opts.input_channels + 1, "resnet101-skip-pretrain")
+        self.delse_pth = opts.delse_pth
+        self.full_model = backend_cnn_model(opts.input_channels + 1, "resnet101-skip-pretrain", opts.delse_pth)
 
     def forward(self, x, meta):
         x = torch.cat([meta[:, 0:1], x], dim=1)  # add extreme points labels
@@ -226,7 +227,7 @@ class ResNet(nn.Module):
             return x0
         return x
 
-    def load_pretrained_ms(self, base_network, nInputChannels=3):
+    def load_pretrained_ms(self, base_network, nInputChannels=3, delse_pth=None):
         flag = 0
         for module, module_ori in zip(self.modules(), base_network.Scale.modules()):
             if isinstance(module, nn.Conv2d) and isinstance(module_ori, nn.Conv2d):
@@ -297,12 +298,13 @@ class MS_Deeplab(nn.Module):
         return out[-1]
 
 
-def Res_Deeplab(n_classes=21, pretrained=False):
+def Res_Deeplab(n_classes=21, pretrained=False, delse_pth=None):
     model = MS_Deeplab(Bottleneck, n_classes)
+    if delse_pth is None:
+        delse_pth = '/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth'
+
     if pretrained:
-        pth_model = '/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth'
-        saved_state_dict = torch.load(pth_model,
-                                      map_location=lambda storage, loc: storage)
+        saved_state_dict = torch.load(delse_pth, map_location=lambda x, loc: x)
         if n_classes != 21:
             for i in saved_state_dict:
                 i_parts = i.split('.')
@@ -426,14 +428,14 @@ class SkipResnet(nn.Module):
                         yield k
 
 
-def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, classifier="atrous",
-                       dilations=(2, 4), strides=(2, 2, 2, 1, 1), layers=(3, 4, 23, 3), feature_dim=2048):
+def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, classifier="atrous", dilations=(2, 4),
+                       strides=(2, 2, 2, 1, 1), layers=(3, 4, 23, 3), feature_dim=2048, delse_pth=None):
     """Constructs a ResNet-101 model.
     """
     model = ResNet(Bottleneck, layers, n_classes[0], nInputChannels=nInputChannels,
                    classifier=classifier, dilations=dilations, strides=strides, _print=True, feature_dim=feature_dim)
     if pretrained:
-        model_full = Res_Deeplab(n_classes[0], pretrained=pretrained)
+        model_full = Res_Deeplab(n_classes[0], pretrained=pretrained, delse_pth)
         model.load_pretrained_ms(model_full, nInputChannels=nInputChannels)
     if len(n_classes) >= 2:
         model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512, sizes=(1, 2, 3, 6), n_classes=n_classes[1])
@@ -444,21 +446,21 @@ def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, clas
     return model
 
 
-def backend_cnn_model(input_channels, model_type="resnet101-skip-pretrain", classifier="psp", concat_dim=128):
+def backend_cnn_model(input_channels, model_type="resnet101-skip-pretrain", delse_pth=None, classifier="psp", concat_dim=128):
 
     if model_type == 'resnet101':
         model = build_resnet_model(n_classes=(1, 2), pretrained=False, nInputChannels=input_channels,
-                                   classifier=classifier)
+                                   classifier=classifier, delse_pth=delse_pth)
     elif model_type == 'resnet50':
         model = build_resnet_model(n_classes=(1, 2), pretrained=False, nInputChannels=input_channels,
-                                   classifier=classifier, layers=(3, 4, 6, 3))
+                                   classifier=classifier, layers=(3, 4, 6, 3), delse_pth=delse_pth)
     elif model_type == 'resnet101-skip-pretrain':
         resnet = build_resnet_model(n_classes=(1, 2, 1), pretrained=True, nInputChannels=input_channels,
-                                    classifier=classifier, feature_dim=4*concat_dim)
+                                    classifier=classifier, feature_dim=4*concat_dim, delse_pth=delse_pth)
         model = SkipResnet(concat_channels=concat_dim, resnet=resnet)
     elif model_type == 'resnet101-pretrain':
         model = build_resnet_model(n_classes=(1, 2, 1), pretrained=True, nInputChannels=input_channels,
-                                   classifier=classifier)
+                                   classifier=classifier, delse_pth=delse_pth)
     return model
 
 

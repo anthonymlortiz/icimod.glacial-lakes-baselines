@@ -15,29 +15,8 @@ class DelseModel(nn.Module):
         self.T = opts.delse_iterations
         self.epsilon = opts.delse_epsilon
         self.dt_max = opts.dt_max
-        self.input_channels = opts.input_channels
-        n_classes = (1, 2, 1)
-
-        concat_dim = 128
-        feature_dim = 4 * concat_dim
-        layers = (3, 4, 23, 3)
-        dilations = (2, 4)
-        strides = (2, 2, 2, 1, 1)
-        model = ResNet(Bottleneck, layers, n_classes[0],
-                       nInputChannels=self.input_channels + 1, classifier="psp",
-                       dilations=dilations, strides=strides, _print=True,
-                       feature_dim=feature_dim)
-
-        model_full = Res_Deeplab(opts.delse_pth, n_classes[0])
-        model.load_pretrained_ms(model_full, nInputChannels=self.input_channels + 1)
-        model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512,
-                                   sizes=(1, 2, 3, 6), n_classes=n_classes[1])
-        model.layer5_2 = PSPModule(in_features=feature_dim, out_features=512,
-                                   sizes=(1, 2, 3, 6), n_classes=n_classes[2])
-
-        weight_init(model.layer5_1)
-        weight_init(model.layer5_2)
-        self.full_model = SkipResnet(concat_channels=concat_dim, resnet=model)
+        self.delse_pth = opts.delse_pth
+        self.full_model = backend_cnn_model(opts.input_channels + 1, "resnet101-skip-pretrain", opts.delse_pth)
 
     def forward(self, x, meta):
         x = torch.cat([meta[:, 0:1], x], dim=1)  # add extreme points labels
@@ -52,13 +31,6 @@ class DelseModel(nn.Module):
             probs = lse.Heaviside(phi_T, epsilon=self.epsilon)
             return 1. * (probs[:,   0] > threshold), probs, (phi_0, energy, g)
 
-def weight_init(model):
-    for m in model.modules():
-        if isinstance(m, nn.Conv2d):
-            m.weight.data.normal_(0, 0.01)
-        elif isinstance(m, nn.BatchNorm2d):
-            m.weight.data.fill_(1)
-            m.bias.data.zero_()
 
 def outS(i):
     i = int(i)
@@ -68,15 +40,61 @@ def outS(i):
     return i
 
 
+class Bottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, inplanes, planes, stride=1,  dilation_=1, downsample=None):
+        super(Bottleneck, self).__init__()
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False) # change
+        self.bn1 = nn.BatchNorm2d(planes, affine=affine_par)
+        for i in self.bn1.parameters():
+            i.requires_grad = False
+        padding = 1
+        if dilation_ == 2:
+            padding = 2
+        elif dilation_ == 4:
+            padding = 4
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, # change
+                               padding=padding, bias=False, dilation=dilation_)
+        self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
+        for i in self.bn2.parameters():
+            i.requires_grad = False
+        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(planes * 4, affine=affine_par)
+        for i in self.bn3.parameters():
+            i.requires_grad = False
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        return self.relu(out)
+
+
 class ClassifierModule(nn.Module):
+
     def __init__(self, dilation_series, padding_series, n_classes):
         super(ClassifierModule, self).__init__()
         self.conv2d_list = nn.ModuleList()
         for dilation, padding in zip(dilation_series, padding_series):
-            self.conv2d_list.append(
-                nn.Conv2d(512, n_classes, kernel_size=3, stride=1,  # had been 2048, not 512
-                          padding=padding, dilation=dilation, bias=True)
-            )
+            self.conv2d_list.append(nn.Conv2d(2048, n_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
 
         for m in self.conv2d_list:
             m.weight.data.normal_(0, 0.01)
@@ -92,7 +110,6 @@ class PSPModule(nn.Module):
     """
     Pyramid Scene Parsing module
     """
-
     def __init__(self, in_features=2048, out_features=512, sizes=(1, 2, 3, 6), n_classes=1):
         super(PSPModule, self).__init__()
         self.stages = []
@@ -124,18 +141,16 @@ class PSPModule(nn.Module):
 
     def forward(self, feats):
         h, w = feats.size(2), feats.size(3)
-        priors = [F.interpolate(input=stage(feats), size=(h, w), mode='bilinear', align_corners=True) for stage in self.stages]
+        priors = [F.upsample(input=stage(feats), size=(h, w), mode='bilinear', align_corners=True) for stage in self.stages]
         priors.append(feats)
         bottle = self.relu(self.bottleneck(torch.cat(priors, 1)))
         out = self.final(bottle)
-
         return out
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, n_classes, nInputChannels=3,
-                 classifier="atrous", dilations=(2, 4), strides=(2, 2, 2, 1, 1),
-                 _print=True, feature_dim=2048):
+    def __init__(self, block, layers, n_classes, nInputChannels=3, classifier="atrous",
+                 dilations=(2, 4), strides=(2, 2, 2, 1, 1), _print=False, feature_dim=2048):
         if _print:
             print("Constructing ResNet model...")
             print("Dilations: {}".format(dilations))
@@ -144,7 +159,8 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.classifier = classifier
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(nInputChannels, 64, kernel_size=7, stride=strides[0], padding=3, bias=False)
+        self.conv1 = nn.Conv2d(nInputChannels, 64, kernel_size=7, stride=strides[0], padding=3,
+                               bias=False)
         self.bn1 = nn.BatchNorm2d(64, affine=affine_par)
         for i in self.bn1.parameters():
             i.requires_grad = False
@@ -155,10 +171,19 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=strides[3], dilation__=dilations[0])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=strides[4], dilation__=dilations[1])
 
-        print('Initializing classifier: A-trous pyramid')
-        self.layer5 = ClassifierModule([6, 12, 18, 24], [6, 12, 18, 24], n_classes)
+        if classifier == "atrous":
+            if _print:
+                print('Initializing classifier: A-trous pyramid')
+            self.layer5 = ClassifierModule([6, 12, 18, 24], [6, 12, 18, 24], n_classes)
+        elif classifier == "psp":
+            if _print:
+                print('Initializing classifier: PSP')
+            self.layer5 = PSPModule(in_features=feature_dim, out_features=feature_dim//4, sizes=(1, 2, 3, 6), n_classes=n_classes)
+        else:
+            self.layer5 = None
         self.layer5_1 = None
         self.layer5_2 = None
+
         weight_init(self)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation__=1):
@@ -178,7 +203,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, bbox=None):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -202,7 +227,7 @@ class ResNet(nn.Module):
             return x0
         return x
 
-    def load_pretrained_ms(self, base_network, nInputChannels=3):
+    def load_pretrained_ms(self, base_network, nInputChannels=3, delse_pth=None):
         flag = 0
         for module, module_ori in zip(self.modules(), base_network.Scale.modules()):
             if isinstance(module, nn.Conv2d) and isinstance(module_ori, nn.Conv2d):
@@ -273,58 +298,13 @@ class MS_Deeplab(nn.Module):
         return out[-1]
 
 
-class Bottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(self, inplanes, planes, stride=1,  dilation_=1, downsample=None):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes, affine=affine_par)
-        for i in self.bn1.parameters():
-            i.requires_grad = False
-        padding = 1
-        if dilation_ == 2:
-            padding = 2
-        elif dilation_ == 4:
-            padding = 4
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1,
-                               padding=padding, bias=False, dilation=dilation_)
-        self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
-        for i in self.bn2.parameters():
-            i.requires_grad = False
-        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4, affine=affine_par)
-        for i in self.bn3.parameters():
-            i.requires_grad = False
-        self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        return self.relu(out)
-
-
-def Res_Deeplab(pth_model, n_classes=21, pretrained=True):
+def Res_Deeplab(n_classes=21, pretrained=False, delse_pth=None):
     model = MS_Deeplab(Bottleneck, n_classes)
+    if delse_pth is None:
+        delse_pth = '/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth'
+
     if pretrained:
-        saved_state_dict = torch.load(pth_model, map_location=lambda x, loc: x)
+        saved_state_dict = torch.load(delse_pth, map_location=lambda x, loc: x)
         if n_classes != 21:
             for i in saved_state_dict:
                 i_parts = i.split('.')
@@ -337,10 +317,6 @@ def Res_Deeplab(pth_model, n_classes=21, pretrained=True):
 class SkipResnet(nn.Module):
     def __init__(self, concat_channels=128, mid_dim=256, final_dim=512, resnet=None, torch_model=False, use_conv=False):
         super(SkipResnet, self).__init__()
-
-        # Default transform for all torchvision models
-        self.normalizer = transforms.Normalize(mean=[0, 0, 0], std=[1, 1, 1])
-
         self.concat_channels = concat_channels
         self.final_dim = final_dim
 
@@ -376,25 +352,20 @@ class SkipResnet(nn.Module):
         # Different from original, original used maxpool
         # Original used no activation here
         if self.use_conv:
-            conv_final_1 = nn.Conv2d(4*concat_channels, mid_dim, kernel_size=3,
-                                     padding=1, stride=2, bias=False)
+            conv_final_1 = nn.Conv2d(4*concat_channels, mid_dim, kernel_size=3, padding=1, stride=2,
+                bias=False)
             bn_final_1 = nn.BatchNorm2d(mid_dim)
             conv_final_2 = nn.Conv2d(mid_dim, mid_dim, kernel_size=3, padding=1, stride=2, bias=False)
             bn_final_2 = nn.BatchNorm2d(mid_dim)
             conv_final_3 = nn.Conv2d(mid_dim, final_dim, kernel_size=3, padding=1, bias=False)
             bn_final_3 = nn.BatchNorm2d(final_dim)
 
-            self.conv_final = nn.Sequential(conv_final_1, bn_final_1,
-                                            conv_final_2, bn_final_2,
-                                            conv_final_3, bn_final_3)
+            self.conv_final = nn.Sequential(conv_final_1, bn_final_1, conv_final_2, bn_final_2,
+                conv_final_3, bn_final_3)
         else:
             self.conv_final = None
 
     def forward(self, x):
-        if self.torch_model:
-            x = self.normalize(x)
-        # Normalization
-
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
         conv1_f = self.resnet.relu(x)
@@ -430,23 +401,14 @@ class SkipResnet(nn.Module):
             return x0
         return x
 
-    def normalize(self, x):
-        individual = torch.unbind(x, dim=0)
-        out = []
-        for x in individual:
-            out.append(self.normalizer(x))
-
-        return torch.stack(out, dim=0)
-
     def get_1x_lr_params(self):
         """
         This generator returns all the parameters of the net except for
         the last classification layer. Note that for each batchnorm layer,
-        requires_grad is set to False in deeplab_resnet.py, therefore this
-        function does not return any batchnorm parameter
+        requires_grad is set to False in deeplab_resnet.py, therefore this function does not return
+        any batchnorm parameter
         """
-        b = [self.resnet.conv1, self.resnet.bn1, self.resnet.layer1,
-             self.resnet.layer2, self.resnet.layer3, self.resnet.layer4]
+        b = [self.resnet.conv1, self.resnet.bn1, self.resnet.layer1, self.resnet.layer2, self.resnet.layer3, self.resnet.layer4]
         for i in range(len(b)):
             for k in b[i].parameters():
                 if k.requires_grad:
@@ -454,14 +416,79 @@ class SkipResnet(nn.Module):
 
     def get_10x_lr_params(self):
         """
-        This generator returns all the parameters for the last layer of the
-        net, which does the classification of pixel into classes
+        This generator returns all the parameters for the last layer of the net,
+        which does the classification of pixel into classes
         """
         b = [self.resnet.layer5, self.resnet.layer5_1, self.resnet.layer5_2,
-             self.conv1_concat, self.res1_concat, self.res2_concat,
-             self.res4_concat, self.conv_final]
+             self.conv1_concat, self.res1_concat, self.res2_concat, self.res4_concat, self.conv_final]
         for j in range(len(b)):
             if b[j] is not None:
                 for k in b[j].parameters():
                     if k.requires_grad:
                         yield k
+
+
+def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, classifier="atrous", dilations=(2, 4),
+                       strides=(2, 2, 2, 1, 1), layers=(3, 4, 23, 3), feature_dim=2048, delse_pth=None):
+    """Constructs a ResNet-101 model.
+    """
+    model = ResNet(Bottleneck, layers, n_classes[0], nInputChannels=nInputChannels,
+                   classifier=classifier, dilations=dilations, strides=strides, _print=True, feature_dim=feature_dim)
+    if pretrained:
+        model_full = Res_Deeplab(n_classes[0], pretrained=pretrained, delse_pth=delse_pth)
+        model.load_pretrained_ms(model_full, nInputChannels=nInputChannels)
+    if len(n_classes) >= 2:
+        model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512, sizes=(1, 2, 3, 6), n_classes=n_classes[1])
+        weight_init(model.layer5_1)
+    if len(n_classes) >= 3:
+        model.layer5_2 = PSPModule(in_features=feature_dim, out_features=512, sizes=(1, 2, 3, 6), n_classes=n_classes[2])
+        weight_init(model.layer5_2)
+    return model
+
+
+def backend_cnn_model(input_channels, model_type="resnet101-skip-pretrain", delse_pth=None, classifier="psp", concat_dim=128):
+
+    if model_type == 'resnet101':
+        model = build_resnet_model(n_classes=(1, 2), pretrained=False, nInputChannels=input_channels,
+                                   classifier=classifier, delse_pth=delse_pth)
+    elif model_type == 'resnet50':
+        model = build_resnet_model(n_classes=(1, 2), pretrained=False, nInputChannels=input_channels,
+                                   classifier=classifier, layers=(3, 4, 6, 3), delse_pth=delse_pth)
+    elif model_type == 'resnet101-skip-pretrain':
+        resnet = build_resnet_model(n_classes=(1, 2, 1), pretrained=True, nInputChannels=input_channels,
+                                    classifier=classifier, feature_dim=4*concat_dim, delse_pth=delse_pth)
+        model = SkipResnet(concat_channels=concat_dim, resnet=resnet)
+    elif model_type == 'resnet101-pretrain':
+        model = build_resnet_model(n_classes=(1, 2, 1), pretrained=True, nInputChannels=input_channels,
+                                   classifier=classifier, delse_pth=delse_pth)
+    return model
+
+
+def get_lr_params(model):
+    """
+    This generator returns all the parameters of the net except for
+    the last classification layer. Note that for each batchnorm layer,
+    requires_grad is set to False in deeplab_resnet.py, therefore this function does not return
+    any batchnorm parameter
+    """
+    b = [model.conv1, model.bn1, model.layer1, model.layer2, model.layer3, model.layer4, model.layer5]
+    for i in range(len(b)):
+        for k in b[i].parameters():
+            if k.requires_grad:
+                yield k
+
+
+def weight_init(model):
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            m.weight.data.normal_(0, 0.01)
+        elif isinstance(m, nn.BatchNorm2d):
+            m.weight.data.fill_(1)
+            m.bias.data.zero_()
+
+    # for m in model.modules():
+    #     if isinstance(m, nn.Conv2d):
+    #         nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    #     elif isinstance(m, nn.BatchNorm2d):
+    #         nn.init.constant_(m.weight, 1)
+    #         nn.init.constant_(m.bias, 0)

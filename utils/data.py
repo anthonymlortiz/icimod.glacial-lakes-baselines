@@ -39,7 +39,7 @@ def make_gaussian(size, center, sigma=10):
     return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
 
 
-def gaussian_convolve(dim, p, sigma=10):
+def gaussian_convolve(dim, p, sigma=4):
     """ Make the ground-truth for  landmark.
     dim: The shape of the underlying image
     p: A numpy array containing centers of all the points to draw heatmaps at
@@ -52,7 +52,7 @@ def gaussian_convolve(dim, p, sigma=10):
     return gt
 
 
-def sdt_i(yi, dist_max=30):
+def sdt_i(yi, dist_max=20):
     dt_inner = ndimage.distance_transform_edt(yi.copy() == 0)
     dt_outer = ndimage.distance_transform_edt(yi.copy() == 1)
     dt = dt_inner + dt_outer
@@ -62,10 +62,10 @@ def sdt_i(yi, dist_max=30):
     dt[dt > dist_max] = dist_max
     sdt[sdt > dist_max] = dist_max
     sdt[sdt < -dist_max] = -dist_max
-    return -dt, -sdt
+    return dt, sdt
 
 
-def sdt(y, dist_max=30):
+def sdt(y, dist_max=20):
     dts, sdts = np.zeros(y.shape), np.zeros(y.shape)
     for i, yi in enumerate(y):
         dts[i], sdts[i] = sdt_i(yi, dist_max)
@@ -113,8 +113,9 @@ def preprocessor(img, y):
     y, extreme_polys = mask(y, img)
     dist, signed_dist = sdt(y)
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
-    maxes = [z.max(0) for z in [y, extreme_hm, dist, signed_dist]]
-    y, meta = maxes[0][np.newaxis, ...], np.stack(maxes[1:])
+    maxes = [z.max(0) for z in [y, extreme_hm]]
+    mins = [z.min(0) for z in [dist, signed_dist]]
+    y, meta = maxes[0][np.newaxis, ...], np.stack([maxes[1]] + mins)
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 
@@ -173,7 +174,8 @@ def preprocess_dir(in_dir, y):
     (in_dir / "meta").mkdir(parents=True)
 
     scene_list = list(in_dir.glob("*.tif"))
-    fields = ["scene"] + sum([[f"{s}_{i}" for i in range(11)] for s in ["mean", "sdev"]], [])
+    tmp = rasterio.open(scene_list[0]).read()
+    fields = ["scene"] + sum([[f"{s}_{i}" for i in range(tmp.shape[0])] for s in ["mean", "sdev"]], [])
     f = open(in_dir / "statistics.csv", "a")
     writer = csv.writer(f)
     writer.writerow(fields)

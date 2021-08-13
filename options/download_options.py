@@ -5,7 +5,7 @@ class DownloadOptions():
         self.initialized = False
 
     def initialize(self, parser):
-        parser.add_argument('--save_dir', type=str, default='/datadrive/snake/lakes/sentinel/', help='Absolute of the directory to create and save results')
+        parser.add_argument('--save_dir', type=str, default='/datadrive/snake/lakes/sentinel-tests/', help='Absolute of the directory to create and save results')
         parser.add_argument('--area_filter', type=float, default=0.25, help='Lakes with 2015 area below this quantile will not be downloaded')
         parser.add_argument('--vector_labels', type=str, default='/datadrive/snake/lakes/GL_3basins_2015.shp', help='Absolute path to shapefiles with the area of interest geoms to query')
         parser.add_argument('--buffer', type=float, default=1e-4, help='How much should we buffer the area of interests before downloading?')

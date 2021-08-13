@@ -58,7 +58,7 @@ def download(catalog, geom, time_range, buffer=0.001, **kwargs):
             image, transform = rasterio.mask.mask(f, [geom], crop=True, invert=False, pad=False, all_touched=True)
             meta = f.meta
 
-        if np.all(image) == 0 or np.all(image) == 255:
+        if np.all(np.isin(image, [0, 255])):
             raise ValueError("Returned a nodata patch")
 
     return image, meta, transform, props

@@ -435,7 +435,7 @@ def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, clas
     model = ResNet(Bottleneck, layers, n_classes[0], nInputChannels=nInputChannels,
                    classifier=classifier, dilations=dilations, strides=strides, _print=True, feature_dim=feature_dim)
     if pretrained:
-        model_full = Res_Deeplab(n_classes[0], pretrained=pretrained, delse_pth)
+        model_full = Res_Deeplab(n_classes[0], pretrained=pretrained, delse_pth=delse_pth)
         model.load_pretrained_ms(model_full, nInputChannels=nInputChannels)
     if len(n_classes) >= 2:
         model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512, sizes=(1, 2, 3, 6), n_classes=n_classes[1])

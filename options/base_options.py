@@ -27,7 +27,7 @@ class BaseOptions():
         parser.add_argument('--subset_size', type=int, default=None, help='Size of dataset subsample, for debugging purposes')
 
         # input/output settings
-        parser.add_argument('--input_channels', type=int, default=11, help='Number of channel in the input images')
+        parser.add_argument('--input_channels', type=int, default=3, help='Number of channel in the input images')
         parser.add_argument('--num_classes', type=int, default=2, help='Number of output segmentation classes per task')
         parser.add_argument('--num_workers', default=4, type=int, help='# workers for loading data')
 

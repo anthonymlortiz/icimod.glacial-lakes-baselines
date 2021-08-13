@@ -85,6 +85,7 @@ def load_dataset(opts):
     val_meta_fns = get_meta_fns(opts.data_dir , "val", opts.dataset)
     val_img_fns.sort()
     val_label_fns.sort()
+    val_meta_fns.sort()
 
     if opts.subset_size is not None:
         train_img_fns = train_img_fns[:opts.subset_size]

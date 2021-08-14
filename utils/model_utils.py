@@ -147,20 +147,62 @@ def inference_gen(pred_fun, processor, postprocessor, **kwargs):
     def inferencer(fn, meta_fn, stats_fn):
         x, meta, pre = processor(fn, meta_fn, stats_fn, **kwargs)
         with torch.no_grad():
-            y_hat, probs, _ = pred_fun(x, meta)
+            y_hat, probs = inference_sweep(x, meta, pred_fun)
 
         return postprocessor(y_hat, probs, pre, **kwargs)
     return inferencer
 
 
+def sweep_indices(dim, stride, chip_size):
+    ix = [np.arange(0, dim[i], dim[i] //stride[i]) for i in range(2)]
+    result = []
+
+    for h in ix[0]:
+        for w in ix[1]:
+            result.append((
+                slice(int(h), int(h) + chip_size[0]),
+                slice(int(w), int(w) + chip_size[1])
+            ))
+
+    return result
+
+
+def inference_sweep(x, meta, pred_fun, chip_size=(256, 256), stride=None):
+    dim = x.shape
+    if stride is None:
+        stride = [dim[i] / chip_size[i] for i in range(2)]
+
+    sweep_ix = sweep_indices(dim, stride, chip_size)
+    y_hat = np.zeros((dim[0], dim[1], len(sweep_ix)))
+    probs = np.zeros((dim[0], dim[1], len(sweep_ix)))
+    counts = np.zeros((dim[0], dim[1]))
+    for i, (h, w) in enumerate(sweep_ix):
+        x_, meta_ = processor(x[h, w], meta[h, w], stats_fn)
+        #y_hat_, probs_, _ = pred_fun(x_, meta_)
+        y_hat[h, w, i] += y_hat_
+        probs[h, w, i] += probs_
+        counts[h, w] += 1
+
+    probs = probs.sum(axis=2) / counts
+    y_hat = y_hat.sum(axis=2) / counts
+    return 1 * (y_hat > 0.5), probs
+
+def pad_size(dim, chip_size, stride=None):
+    if stride is None:
+        stride = chip_size
+
+    return [stride[i] * (dim[i] // stride[i]) + chip_size[i] for i in range(2)]
+
+
 # example input pre and postprocessing functions for inference
-def processor_raster(fn, meta_fn, stats_fn, device, out=(1024, 1024), **kwargs):
+def processor_raster(fn, meta_fn, stats_fn, device, chip_size, stride=None, **kwargs):
     x = rasterio.open(fn).read()
     meta = rasterio.open(meta_fn).read()
 
     x = np.transpose(x, (1, 2, 0))
-    x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
-    meta_ = np.pad(meta, ((0, 0), (0, out[0] - meta.shape[1]), (0, out[1] - meta.shape[2])))
+    pad = pad_size(x.shape, chip_size, stride)
+    x_ = np.pad(x, pad)
+    meta_ = np.pad(meta, pad)
 
     id = Path(fn).stem
     x_ = image_transforms(x_, stats_fn, id).to(device).unsqueeze(0)

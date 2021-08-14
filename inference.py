@@ -41,7 +41,8 @@ else:
         model.infer,
         mu.processor_raster,
         mu.postprocessor_raster,
-        device=opts.device
+        device=opts.device,
+        chip_size=(opts.chip_size, opts.chip_size)
     )
 
 # get paths and run inference

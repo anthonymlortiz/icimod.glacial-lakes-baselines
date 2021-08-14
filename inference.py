@@ -39,10 +39,8 @@ else:
     base = Path(opts.data_dir)
     pred_fun = mu.inference_gen(
         model.infer,
-        mu.processor_raster,
-        mu.postprocessor_raster,
-        device=opts.device,
-        chip_size=(opts.chip_size, opts.chip_size)
+        mu.processor_chip(opts.device),
+        chip_size=opts.chip_size
     )
 
 # get paths and run inference

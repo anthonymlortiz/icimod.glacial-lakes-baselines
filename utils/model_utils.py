@@ -141,73 +141,81 @@ def load_options(file_name):
         opt = pickle.load(open(file_name + '.pkl', 'rb'))
     return opt
 
+def prepare_tile(fn, meta_fn, stride, chip_size):
+    x = rasterio.open(fn).read()
+    meta = rasterio.open(meta_fn).read()
+    x = np.moveaxis(x, 0, 2)
+    meta = np.moveaxis(meta, 0, 2)
+    dim = x.shape
+
+    # pad the data
+    pad = pad_size(x.shape, chip_size, stride)
+    x = np.pad(x, pad)
+    meta = np.pad(meta, pad)
+    return x, meta, dim, Path(fn).stem
+
 
 # generic inference function
-def inference_gen(pred_fun, processor, postprocessor, **kwargs):
+def inference_gen(pred_fun, processor, stride=200, chip_size=256):
     def inferencer(fn, meta_fn, stats_fn):
-        x, meta, pre = processor(fn, meta_fn, stats_fn, **kwargs)
+        x, meta, dim, id = prepare_tile(fn, meta_fn, stride, chip_size)
         with torch.no_grad():
-            y_hat, probs = inference_sweep(x, meta, pred_fun)
+            sweep_ix = sweep_indices(dim, stride, chip_size)
+            y_hat, probs = inference_sweep(
+                x, meta, stats_fn, id,
+                pred_fun, processor, sweep_ix
+            )
 
-        return postprocessor(y_hat, probs, pre, **kwargs)
+        return y_hat[None, :dim[0], :dim[1]], probs[None, :dim[0], :dim[1]]
     return inferencer
 
+def cpu(z):
+    return z.cpu().numpy()
 
-def sweep_indices(dim, stride, chip_size):
-    ix = [np.arange(0, dim[i], dim[i] //stride[i]) for i in range(2)]
-    result = []
-
-    for h in ix[0]:
-        for w in ix[1]:
-            result.append((
-                slice(int(h), int(h) + chip_size[0]),
-                slice(int(w), int(w) + chip_size[1])
-            ))
-
-    return result
-
-
-def inference_sweep(x, meta, pred_fun, chip_size=(256, 256), stride=None):
-    dim = x.shape
-    if stride is None:
-        stride = [dim[i] / chip_size[i] for i in range(2)]
-
-    sweep_ix = sweep_indices(dim, stride, chip_size)
-    y_hat = np.zeros((dim[0], dim[1], len(sweep_ix)))
-    probs = np.zeros((dim[0], dim[1], len(sweep_ix)))
-    counts = np.zeros((dim[0], dim[1]))
+def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix):
+    y_hat, probs, counts = [np.zeros(x.shape[:2]) for _ in range(3)]
     for i, (h, w) in enumerate(sweep_ix):
-        x_, meta_ = processor(x[h, w], meta[h, w], stats_fn)
-        #y_hat_, probs_, _ = pred_fun(x_, meta_)
-        y_hat[h, w, i] += y_hat_
-        probs[h, w, i] += probs_
+        x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
+        y_hat_, probs_, _ = pred_fun(x_, meta_)
+        y_hat[h, w] += cpu(y_hat_[0])
+        probs[h, w] += cpu(probs_[0, 0])
         counts[h, w] += 1
 
-    probs = probs.sum(axis=2) / counts
-    y_hat = y_hat.sum(axis=2) / counts
+    probs /= counts
+    y_hat /= counts
     return 1 * (y_hat > 0.5), probs
+
 
 def pad_size(dim, chip_size, stride=None):
     if stride is None:
         stride = chip_size
 
-    return [stride[i] * (dim[i] // stride[i]) + chip_size[i] for i in range(2)]
+    pad = [stride * (dim[i] // stride) + chip_size - dim[i] for i in range(2)]
+    return [(0, s) for s in pad + [0]]
+
+
+def sweep_indices(dim, stride, chip_size):
+    ix = [np.arange(0, dim[i], stride) for i in range(2)]
+    result = []
+
+    for h in ix[0]:
+        for w in ix[1]:
+            result.append((
+                slice(int(h), int(h) + chip_size),
+                slice(int(w), int(w) + chip_size)
+            ))
+
+    return result
 
 
 # example input pre and postprocessing functions for inference
-def processor_raster(fn, meta_fn, stats_fn, device, chip_size, stride=None, **kwargs):
-    x = rasterio.open(fn).read()
-    meta = rasterio.open(meta_fn).read()
-
-    x = np.transpose(x, (1, 2, 0))
-    pad = pad_size(x.shape, chip_size, stride)
-    x_ = np.pad(x, pad)
-    meta_ = np.pad(meta, pad)
-
-    id = Path(fn).stem
-    x_ = image_transforms(x_, stats_fn, id).to(device).unsqueeze(0)
-    meta_ = torch.from_numpy(meta_).to(device).unsqueeze(0)
-    return x_, meta_, {"dim": x.shape}
+def processor_chip(device):
+    def f(x, meta, stats_fn, id):
+        x_ = image_transforms(x, stats_fn, id).to(device).unsqueeze(0)
+        meta = np.moveaxis(meta, 2, 0)
+        meta_ = torch.from_numpy(meta).to(device).unsqueeze(0)
+        return x_, meta_
+    return f
 
 def processor_snake(fn, meta_fn, out=(1024, 1024), **kwargs):
     src  = rasterio.open(fn)
@@ -232,13 +240,6 @@ def processor_snake(fn, meta_fn, out=(1024, 1024), **kwargs):
                 py, px = src.index(lon, lat)
                 xy_polygon.append((px, py))
     return x_, xy_polygon, {"dim": x.shape}
-
-
-def postprocessor_raster(y_hat, probs, pre, **kwargs):
-    y_hat = y_hat[None, :, :pre["dim"][0], :pre["dim"][1]]
-    probs = probs[:, :, :pre["dim"][0], :pre["dim"][1]]
-    cpu = lambda x: x.cpu().numpy().squeeze(0)
-    return cpu(y_hat), cpu(probs)
 
 
 def blur_raster(x, sigma=2, threshold=0.5):

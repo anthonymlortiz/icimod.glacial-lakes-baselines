@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from models.base_network import BaseNetwork
 
-
 class ConvBlock(nn.Module):
     """U-Net constractive blocks
 
@@ -87,4 +86,4 @@ class UnetModel(BaseNetwork):
     def infer(self, x, meta=None, threshold=0.4):
         with torch.no_grad():
             probs = self.forward(x, meta)
-            return 1. * (probs > threshold), probs, probs
+            return 1. * (probs[:, 1] > threshold), probs, probs

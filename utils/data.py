@@ -27,7 +27,7 @@ def extreme_points(mask, pert=0):
                      ])
 
 
-def make_gaussian(size, center, sigma=10):
+def make_gaussian(size, center, sigma=20):
     """ Make a square gaussian kernel.
     size: is the dimensions of the output gaussian
     sigma: is full-width-half-maximum, which
@@ -39,7 +39,7 @@ def make_gaussian(size, center, sigma=10):
     return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
 
 
-def gaussian_convolve(dim, p, sigma=4):
+def gaussian_convolve(dim, p, sigma=20):
     """ Make the ground-truth for  landmark.
     dim: The shape of the underlying image
     p: A numpy array containing centers of all the points to draw heatmaps at
@@ -52,7 +52,7 @@ def gaussian_convolve(dim, p, sigma=4):
     return gt
 
 
-def sdt_i(yi, dist_max=20):
+def sdt_i(yi, dist_max=40):
     dt_inner = ndimage.distance_transform_edt(yi.copy() == 0)
     dt_outer = ndimage.distance_transform_edt(yi.copy() == 1)
     dt = dt_inner + dt_outer
@@ -65,7 +65,7 @@ def sdt_i(yi, dist_max=20):
     return dt, sdt
 
 
-def sdt(y, dist_max=20):
+def sdt(y, dist_max=40):
     dts, sdts = np.zeros(y.shape), np.zeros(y.shape)
     for i, yi in enumerate(y):
         dts[i], sdts[i] = sdt_i(yi, dist_max)
@@ -73,11 +73,6 @@ def sdt(y, dist_max=20):
 
 
 def mask(y, img):
-    if (len(y)) == 0:
-        mask = np.zeros((1, img.meta["height"], img.meta["width"]))
-        p = [[0, 0], [0, 1], [1, 0], [1, 1]]
-        return mask, p
-
     extent = gpd.GeoDataFrame(
         index=[0],
         crs=y.crs,
@@ -92,6 +87,11 @@ def mask(y, img):
         if not np.all(mask_i == 0):
             masks.append(mask_i)
             p.append(extreme_points(mask_i))
+
+    # check for corner case of no geoms
+    if len(masks) == 0:
+        masks.append(np.zeros((img.meta["height"], img.meta["width"])))
+        p.append(np.array([[0, 0], [1, 0], [1, 1], [0, 1]]))
 
     # crop to the same shape as img, if slightly off
     masks = np.stack(masks)

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from models.base_network import BaseNetwork
 
-
 class ConvBlock(nn.Module):
     """U-Net constractive blocks
 
@@ -78,10 +77,11 @@ class UnetModel(BaseNetwork):
             x = self.pool(decoder_outputs[-1])
 
         x = self.middle_conv(x)
-
         for op in self.upblocks:
             x = op(x, decoder_outputs.pop())
-        return self.seg_layer(x)
+
+        x = self.seg_layer(x)
+        return torch.sigmoid(x)
 
     def infer(self, x, meta=None, threshold=0.4):
         with torch.no_grad():

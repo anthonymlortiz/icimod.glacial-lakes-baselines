@@ -9,8 +9,16 @@ import os
 
 class StreamingGeospatialDataset(IterableDataset):
 
-    def __init__(self, imagery_fns, stats_fn, label_fns=None, meta_fns=None, groups=None, subtile_bounds=None, chip_size=256, num_chips_per_tile=10, windowed_sampling=False, image_transform=None, label_transform=None, nodata_check=None, verbose=False):
-        """A torch Dataset for randomly sampling chips from a list of tiles. When used in conjunction with a DataLoader that has `num_workers>1` this Dataset will assign each worker to sample chips from disjoint sets of tiles.
+    def __init__(self, imagery_fns, stats_fn, label_fns=None, meta_fns=None,
+                 groups=None, subtile_bounds=None, chip_size=256,
+                 num_chips_per_tile=10, windowed_sampling=False,
+                 image_transform=None, label_transform=None,
+                 joint_transform=None, nodata_check=None, verbose=False):
+        """A torch Dataset for randomly sampling chips from a list of tiles.
+
+        When used in conjunction with a DataLoader that has `num_workers>1` this
+        Dataset will assign each worker to sample chips from disjoint sets of
+        tiles.
         Args:
             imagery_fns: A list of filenames (or URLS -- anything that `rasterio.open()` can read) pointing to imagery tiles.
             label_fns: A list of filenames of the same size as `imagery_fns` pointing to label mask tiles or `None` if the Dataset should operate in "imagery only mode". Note that we expect `imagery_fns[i]` and `label_fns[i]` to have the same dimension and coordinate system.
@@ -42,6 +50,7 @@ class StreamingGeospatialDataset(IterableDataset):
 
         self.image_transform = image_transform
         self.label_transform = label_transform
+        self.joint_transform = joint_transform
         self.nodata_check = nodata_check
 
         self.verbose = verbose
@@ -174,8 +183,11 @@ class StreamingGeospatialDataset(IterableDataset):
                                 labels = self.label_transform(labels, group)
                                 meta = self.label_transform(meta, group)
                         else:
-                            labels = torch.from_numpy(labels).squeeze()
-                            meta = torch.from_numpy(meta).squeeze()
+                            labels = torch.from_numpy(labels)
+                            meta = torch.from_numpy(meta)
+
+                        if self.joint_transform is not None:
+                            img, labels, meta = self.joint_transform(img, labels, meta)
 
                     i += 1
 

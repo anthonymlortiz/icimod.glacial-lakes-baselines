@@ -20,8 +20,8 @@ from pystac_client import Client
 from rasterio.enums import Resampling
 from tempfile import NamedTemporaryFile
 from tqdm import tqdm
-from calendar import monthrange
 import csv
+from datetime import datetime
 import geopandas as gpd
 import shutil
 import utils.download as udl
@@ -40,7 +40,6 @@ if (opts.save_dir).exists():
     shutil.rmtree(opts.save_dir)
 (opts.save_dir).mkdir(parents=True)
 
-
 # What will become our metadata file
 fields = ["filename", "year", "month", "s2:granule_id", "s2:product_uri",
           "datetime", "s2:high_proba_clouds_percentage", "s2:mean_solar_zenith",
@@ -52,42 +51,41 @@ writer.writerow(fields)
 
 for lake_id in tqdm(lakes.index):
     for year in range(2015, 2022):
-        for month in range(1, 13):
-            if year == 2015 and month < 6:
-                continue
-            if year == 2022 and month > 8:
-                continue
+        geom = lakes.loc[lake_id]["geometry"]
+        time_range = f"{year}-01-01/{year}-12-31"
+        out_path = f"{lake_id}_{year}"
 
-            geom = lakes.loc[lake_id]["geometry"]
-            out_path = opts.save_dir / f"{lake_id}-{year}{month:02}.tif"
+        try:
+            results = udl.download(
+                catalog,
+                geom,
+                time_range,
+                opts.buffer,
+                opts.max_nodata,
+                opts.max_cloud,
+                opts.max_snow,
+                opts.n_scenes
+            )
 
-            try:
-                last_day = monthrange(year, month)[1]
-                time_range = f"{year}-{month:02}-01/{year}-{month:02}-{last_day}"
-                image, meta, transform, props = udl.download(
-                    catalog,
-                    geom,
-                    time_range,
-                    opts.buffer,
-                    max_cloud=opts.max_cloud,
-                    max_nodata=opts.max_nodata
-                )
+            for i, result in enumerate(results):
+                image, metas, transforms, props = result
+                dt = datetime.strptime(props["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+                out_path_i = opts.save_dir / f"{out_path}-{dt.month:02}-{dt.day:02}.tif"
 
                 # resample the image if it is very small
                 tmp = [Path(NamedTemporaryFile().name) for _ in range(2)]
-                udt.save_raster(image, meta, transform, out_path)
-                udt.save_raster(image, meta, transform, tmp[0])
+                udt.save_raster(image, metas, transforms, tmp[0])
                 scale = max(opts.resize / image.shape[1], opts.resize / image.shape[2])
                 udl.upscale(tmp[0], tmp[1], scale)
 
                 # warp the image and save as a raster
-                gdal.Warp(str(out_path), gdal.Open(str(tmp[1])), dstSRS="EPSG:4326")
+                udt.save_raster(image, metas, transforms, out_path_i)
+                gdal.Warp(str(out_path_i), gdal.Open(str(tmp[1])), dstSRS="EPSG:4326")
                 [s.unlink() for s in tmp]
 
                 # save the metadata
-                writer.writerow([str(out_path.stem)] + [props[s] for s in fields[3:]])
-
-            except:
-                writer.writerow([str(out_path.stem)])
+                writer.writerow([str(out_path_i.stem)] + [props[s] for s in fields[3:]])
+        except:
+            writer.writerow([out_path])
 
 f.close()

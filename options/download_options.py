@@ -6,12 +6,14 @@ class DownloadOptions():
 
     def initialize(self, parser):
         parser.add_argument('--save_dir', type=str, default='/datadrive/snake/lakes/sentinel-tests/', help='Absolute of the directory to create and save results')
-        parser.add_argument('--area_filter', type=float, default=0.25, help='Lakes with 2015 area below this quantile will not be downloaded')
+        parser.add_argument('--area_filter', type=float, default=0.4, help='Lakes with 2015 area below this quantile will not be downloaded')
         parser.add_argument('--vector_labels', type=str, default='/datadrive/snake/lakes/GL_3basins_2015.shp', help='Absolute path to shapefiles with the area of interest geoms to query')
         parser.add_argument('--buffer', type=float, default=1e-4, help='How much should we buffer the area of interests before downloading?')
         parser.add_argument('--resize', type=float, default=500, help='If the downloaded mask for a lake is below this size, it will be resized up to this.')
-        parser.add_argument('--max_cloud', type=float, default=35, help='What is the maximum amount of cloud coverage that we will tolerate?')
+        parser.add_argument('--max_cloud', type=float, default=.05, help='What is the maximum amount of cloud coverage that we will tolerate?')
         parser.add_argument('--max_nodata', type=float, default=20, help='What is the maximum acceptable nodata in the overall image from which we build the mask?')
+        parser.add_argument('--max_snow', type=float, default=0.9, help='Maximum percentage of snow pixels to tolerate')
+        parser.add_argument('--n_scenes', type=float, default=10, help='How many scenes to attempt downloading per year (subject to cloud and nodata constraints)?')
         self.initialized = True
         return parser
 

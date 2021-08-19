@@ -91,7 +91,7 @@ class DiceBCELoss(nn.Module):
     def __init__(self, batch=True):
         super(DiceBCELoss, self).__init__()
         self.batch = batch
-        self.bce_loss = nn.BCELoss()
+        self.bce_loss = nn.CrossEntropyLoss()
 
     def soft_dice_coeff(self, y_pred, y_true):
         smooth = 0.001  # may change
@@ -111,8 +111,9 @@ class DiceBCELoss(nn.Module):
         return loss
 
     def __call__(self, y_pred, y_true):
+        y_true = y_true.long()
         a = self.bce_loss(y_pred, y_true)
-        b = self.soft_dice_loss(y_pred, y_true)
+        b = self.soft_dice_loss(y_pred[:, 1], y_true)
         return a + b
 
 

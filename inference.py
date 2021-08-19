@@ -33,22 +33,19 @@ else:
 
     model.load_state_dict(torch.load(opts.model_pth))
     model.eval()
-    model.to(opts.device)
+    model = model.to(opts.device)
 
     # function that will do inference
     base = Path(opts.data_dir)
     pred_fun = mu.inference_gen(
         model.infer,
-        mu.processor_raster,
-        mu.postprocessor_raster,
-        device=opts.device
+        mu.processor_chip(opts.device),
+        chip_size=opts.chip_size
     )
 
-
-base = Path(opts.data_dir)
-stats_fn = base / "statistics.csv"
-
 # get paths and run inference
+base = Path(opts.data_dir)
+stats_fn = base / opts.stats_fn
 infer_paths = dt.inference_paths(
     base / opts.x_dir,
     base / opts.meta_dir,

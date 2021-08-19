@@ -43,6 +43,8 @@ if opts.loss == "ce":
     loss = losses.MulticlassCrossEntropy()
 elif opts.loss == "wbce":
     loss = losses.WeightedBCELoss()
+elif opts.loss == "dicebce":
+    loss = losses.DiceBCELoss()
 elif opts.loss == "delse":
     loss = losses.DelseLoss(opts.delse_epsilon)
 else:

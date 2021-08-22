@@ -80,10 +80,9 @@ class UnetModel(BaseNetwork):
         for op in self.upblocks:
             x = op(x, decoder_outputs.pop())
 
-        x = self.seg_layer(x)
-        return torch.sigmoid(x)
+        return self.seg_layer(x)
 
-    def infer(self, x, meta=None, threshold=0.4):
+    def infer(self, x, meta=None, threshold=0.9):
         with torch.no_grad():
-            probs = self.forward(x, meta)
+            probs = torch.sigmoid(self.forward(x, meta))
             return 1. * (probs[:, 1] > threshold), probs, probs

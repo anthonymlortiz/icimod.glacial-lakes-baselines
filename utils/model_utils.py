@@ -178,7 +178,7 @@ def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix):
         x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
         y_hat_, probs_, _ = pred_fun(x_, meta_)
         y_hat[h, w] += cpu(y_hat_[0])
-        probs[h, w] += cpu(probs_[0, 1])
+        probs[h, w] += cpu(probs_[0, 0])
         counts[h, w] += 1
 
     probs /= counts

@@ -126,7 +126,10 @@ def preprocessor(img, y):
     gradient = [inverse_gaussian_gradient(x).mean(axis=0)]
     maxes = [z.max(0) for z in [y, extreme_hm]]
     mins = [z.min(0) for z in [dist, signed_dist]]
-    y, meta = maxes[0][np.newaxis, ...], np.stack([maxes[1]] + mins + gradient)
+    meta = [maxes[1]] + mins + gradient
+    meta = [(s - s.mean()) / s.std() for s in meta]
+
+    y, meta = maxes[0][np.newaxis, ...], np.stack(meta)
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 

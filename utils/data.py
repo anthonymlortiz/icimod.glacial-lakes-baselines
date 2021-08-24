@@ -7,7 +7,7 @@ import shapely.geometry as sg
 import pathlib
 import pandas as pd
 import shutil
-from scipy import ndimage
+from scipy import ndimage as ndi
 from tqdm import tqdm
 
 
@@ -39,6 +39,16 @@ def make_gaussian(size, center, sigma=20):
     return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
 
 
+def inverse_gaussian_gradient(image, alpha=100.0, sigma=5.0):
+    """Inverse of gradient magnitude.
+    Compute the gaussian of magnitude of the gradients in the image and then inverts the
+    result in the range [0, 1]. Flat areas are assigned values close to 1,
+    while areas close to borders are assigned values close to 0.
+    """
+    gradnorm = ndi.gaussian_gradient_magnitude(image, sigma, mode='nearest')
+    return 1.0 / np.sqrt(1.0 + alpha * gradnorm)
+
+
 def gaussian_convolve(dim, p, sigma=20):
     """ Make the ground-truth for  landmark.
     dim: The shape of the underlying image
@@ -53,8 +63,8 @@ def gaussian_convolve(dim, p, sigma=20):
 
 
 def sdt_i(yi, dist_max=40):
-    dt_inner = ndimage.distance_transform_edt(yi.copy() == 0)
-    dt_outer = ndimage.distance_transform_edt(yi.copy() == 1)
+    dt_inner = ndi.distance_transform_edt(yi.copy() == 0)
+    dt_outer = ndi.distance_transform_edt(yi.copy() == 1)
     dt = dt_inner + dt_outer
     sdt = dt_inner - dt_outer
 
@@ -113,9 +123,13 @@ def preprocessor(img, y):
     y, extreme_polys = mask(y, img)
     dist, signed_dist = sdt(y)
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
+    gradient = [inverse_gaussian_gradient(x).mean(axis=0)]
     maxes = [z.max(0) for z in [y, extreme_hm]]
     mins = [z.min(0) for z in [dist, signed_dist]]
-    y, meta = maxes[0][np.newaxis, ...], np.stack([maxes[1]] + mins)
+    meta = [maxes[1]] + mins + gradient
+    meta = [(s - s.mean()) / s.std() for s in meta]
+
+    y, meta = maxes[0][np.newaxis, ...], np.stack(meta)
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 

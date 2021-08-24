@@ -12,7 +12,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--beta2', type=float, default=0.999, help='momentum term of adam')
 
         parser.add_argument('--chip_size', type=int, default=256, help='Size for each training patch')
-        parser.add_argument('--divergence', type=bool, default=True, help='Add divergence feature?')
+        parser.add_argument('--divergence', type=bool, default=False, action='store_true', help='Add divergence feature?')
         parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate for adam')
         parser.add_argument('--loss', type=str, default='ce', help='loss for training model [ce | wbce | dicebce | delse]')
         parser.add_argument('--scheduler_patience', type=int, default=5, help='lr scheduler patience')

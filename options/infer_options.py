@@ -22,5 +22,5 @@ class EvalOptions(BaseOptions):
         parser.add_argument("--inference_dir", type=str, default="/datadrive/results/inference/bing_val-unet")
         parser.add_argument("--vector_label", type=str, default="/datadrive/snake/lakes/GL_3basins_2015.shp")
         parser.add_argument("--buffer", type=float, default=1e-2)
-        parser.add_argument("--tol", type=float, default=1e-4)
+        parser.add_argument("--tol", type=float, default=1e-6)
         return parser

@@ -156,7 +156,7 @@ def prepare_tile(fn, meta_fn, stride, chip_size):
 
 
 # generic inference function
-def inference_gen(pred_fun, processor, stride=50, chip_size=256):
+def inference_gen(pred_fun, processor, stride=150, chip_size=256):
     def inferencer(fn, meta_fn, stats_fn):
         x, meta, dim, id = prepare_tile(fn, meta_fn, stride, chip_size)
         with torch.no_grad():

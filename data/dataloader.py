@@ -77,7 +77,7 @@ def joint_transforms(img, labels, meta):
             labels = f(labels)
             meta = f(meta)
 
-    jitter = T.ColorJitter(brightness=.5, saturation=0.5, hue=.5)
+    jitter = T.ColorJitter(brightness=0.5, saturation=0.5, hue=0.5)
     return jitter(img), labels, meta
 
 

@@ -538,4 +538,4 @@ def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha
                                       init_level_set=init_ls,
                                smoothing=2, threshold='auto',
                                 balloon=1
-                              ), gimg
+                              ).astype(np.uint8), gimg

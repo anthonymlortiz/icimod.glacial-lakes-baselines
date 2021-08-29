@@ -47,7 +47,7 @@ def main():
     #-------------------
     filenames = glob.glob(args.input_dir +"*.tif")
     for input_fn in filenames:
-        output_fn = args.output_dir + str(os.path.basename(input_fn))
+        output_fn = args.output_dir + str(os.path.basename(input_fn)).replace(".tif", "_pred.tif")
         with utils.Timer("loading input", args.verbose):
 
             with rasterio.open(input_fn) as f:

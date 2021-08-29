@@ -8,6 +8,7 @@ class ProcessOptions():
         parser.add_argument('--in_dir', type=str, default='/datadrive/snake/lakes/sentinel-2015/', help='Absolute path to imagery to preprocess')
         parser.add_argument('--label_path', type=str, default='/datadrive/snake/lakes/GL_3basins_2015.shp', help='Absolute path to shapefiles to use for labeling')
         parser.add_argument('--out_dir', type=str, default='/datadrive/snake/lakes/sentinel-2015/processed/sentinel/splits', help='Absolute path to directory to save train / val / test splits')
+        parser.add_argument('--split', default=False, action='store_true', help='Split into train / test / val or just process without shuffling?')
         parser.add_argument('--subset_size', type=int, default=None, help='For test runs, can preprocess just a subset of size subset_size')
         self.initialized = True
         return parser

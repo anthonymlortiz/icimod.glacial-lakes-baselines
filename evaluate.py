@@ -7,7 +7,6 @@ from tqdm import tqdm
 import utils.data as dt
 import utils.metrics as mt
 import utils.model_utils as mu
-import re
 from warnings import warn, filterwarnings
 filterwarnings("ignore", category=UserWarning)
 
@@ -32,7 +31,7 @@ m = []
 
 for i, (path, sample_id) in tqdm(eval_paths.iterrows(), total=len(eval_paths)):
     # get polygon predictions
-    gl_id = re.split('-|_',sample_id,1)[0]
+    gl_id, _ = sample_id.split("_")
     y_hat = rasterio.open(path)
     y_hat_poly = mu.polygonize_preds(y_hat, buffer.loc[gl_id], tol=opts.tol)
     y_hat_poly.to_file(save_dir / f"{sample_id}.geojson", driver="GeoJSON")

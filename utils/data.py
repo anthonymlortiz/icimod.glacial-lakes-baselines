@@ -156,8 +156,8 @@ def inference_paths(x_dir, meta_dir, infer_dir, subset_size=None):
     if len(fn) != len(meta_fn):
         raise ArgumentError("The number of files in --meta_dir and --x_dir must be equal, so that image and metadata can be matched.")
 
-    out_fn_y = [infer_dir / (f.stem + "-pred.tif") for f in fn]
-    out_fn_prob = [infer_dir / (f.stem + "-prob.tif") for f in fn]
+    out_fn_y = [infer_dir / (f.stem + "_pred.tif") for f in fn]
+    out_fn_prob = [infer_dir / (f.stem + "_prob.tif") for f in fn]
 
     result = pd.DataFrame({
         "sample_id": [f.stem for f in fn],
@@ -174,10 +174,10 @@ def inference_paths(x_dir, meta_dir, infer_dir, subset_size=None):
 
 
 def eval_paths(infer_dir):
-    fn = list(pathlib.Path(infer_dir).glob("*-pred.tif"))
+    fn = list(pathlib.Path(infer_dir).glob("*_pred.tif"))
     return pd.DataFrame({
         "path": fn,
-        "sample_id": [str(f.stem).replace("-pred", "") for f in fn]
+        "sample_id": [str(f.stem).replace("_pred", "") for f in fn]
     })
 
 def preprocess_dir(in_dir, y):

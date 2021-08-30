@@ -49,7 +49,7 @@ def inverse_gaussian_gradient(image, alpha=100.0, sigma=5.0):
     return 1.0 / np.sqrt(1.0 + alpha * gradnorm)
 
 
-def gaussian_convolve(dim, p, sigma=40):
+def gaussian_convolve(dim, p, sigma=20):
     """ Make the ground-truth for  landmark.
     dim: The shape of the underlying image
     p: A numpy array containing centers of all the points to draw heatmaps at

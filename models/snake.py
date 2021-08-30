@@ -198,9 +198,6 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
 
     return np.stack([y, x], axis=1)
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-
 class _fcycle(object):
 
     def __init__(self, iterable):
@@ -541,10 +538,3 @@ def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha
                                smoothing=2, threshold='auto',
                                 balloon=1
                               ).astype(np.uint8), gimg
-=======
-def infer(x, meta):
-    c = [a_tuple[0] for a_tuple in meta]
-    r = [a_tuple[-1] for a_tuple in meta]
-    snake = active_contour(x, np.array([r, c]).T, max_num_iter=10)
-    return snake, snake, snake
->>>>>>> Stashed changes

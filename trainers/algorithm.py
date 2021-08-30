@@ -13,8 +13,6 @@ class Algorithm:
         self.device = torch.device(opts.device)
         self.max_grad_norm = opts.max_grad_norm
         self.opts = opts
-        self.iter = 0
-
 
     def process_batch(self, batch):
         x, y, meta = [s.to(self.device) for s in batch]

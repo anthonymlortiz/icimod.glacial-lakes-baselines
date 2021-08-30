@@ -86,7 +86,7 @@ class UnetModel(BaseNetwork):
         x = self.seg_layer(x)
         return torch.sigmoid(x)
 
-    def infer(self, x, meta=None, threshold=0.8):
+    def infer(self, x, meta=None, threshold=0.6):
         with torch.no_grad():
             probs = self.forward(x, meta)
-            return 1. * (probs[:, 1] > threshold), probs[:, 1], probs
+            return 1. * (probs[:, 1] > threshold), probs[:, 1:2], probs

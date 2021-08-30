@@ -36,7 +36,6 @@ class Algorithm:
             clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
         self.optimizer.step()
-        self.iter += 1
         return objective.item()
 
     def save(self, suffix="best"):

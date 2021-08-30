@@ -77,8 +77,7 @@ def joint_transforms(img, labels, meta):
             labels = f(labels)
             meta = f(meta)
 
-    jitter = T.ColorJitter(brightness=0.5, saturation=0.5, hue=0.5)
-    return jitter(img), labels, meta
+    return img, labels, meta
 
 
 def load_dataset(opts):
@@ -109,13 +108,13 @@ def load_dataset(opts):
     stats_fn = get_stats_fn(opts.data_dir, "train", opts.dataset)
     trn = StreamingGeospatialDataset(
         train_img_fns, stats_fn, train_label_fns, train_meta_fns,
-        groups=train_img_fns, chip_size=opts.chip_size, num_chips_per_tile=10,
+        groups=train_img_fns, chip_size=opts.chip_size, num_chips_per_tile=2,
         image_transform=img_transforms, joint_transform=joint_transforms
     )
     stats_fn = get_stats_fn(opts.data_dir, "val", opts.dataset)
     val = StreamingGeospatialDataset(
         val_img_fns, stats_fn, val_label_fns, val_meta_fns, groups=val_img_fns,
-        chip_size=opts.chip_size, num_chips_per_tile=5,
+        chip_size=opts.chip_size, num_chips_per_tile=1,
         image_transform=img_transforms, verbose=False
     )
 

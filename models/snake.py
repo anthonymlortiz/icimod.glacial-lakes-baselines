@@ -198,7 +198,6 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
 
     return np.stack([y, x], axis=1)
 
-
 class _fcycle(object):
 
     def __init__(self, iterable):
@@ -525,7 +524,7 @@ def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha
 
     gimg = inverse_gaussian_gradient(img, alpha=igs_alpha, sigma=igs_sigma)
 
-    # Initialization of the level-set with a circle. ls_center_point should be 
+    # Initialization of the level-set with a circle. ls_center_point should be
     # coordinate tuple (x, y) in the center of the known polygon
     # ls_radious radious of the circle level set
     init_ls = circle_level_set(img.shape, ls_center_point, ls_radious)

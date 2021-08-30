@@ -1,5 +1,4 @@
 import sys
-import shutil
 import os
 import torch
 import utils.metrics as mt

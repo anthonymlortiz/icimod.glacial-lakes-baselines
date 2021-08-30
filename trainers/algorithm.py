@@ -1,6 +1,8 @@
 import torch
 from torch.nn.utils import clip_grad_norm_
 from pathlib import Path
+import numpy as np
+import shutil
 
 
 class Algorithm:
@@ -13,10 +15,19 @@ class Algorithm:
         self.device = torch.device(opts.device)
         self.max_grad_norm = opts.max_grad_norm
         self.opts = opts
+        self.iter = 0
+
+        shutil.rmtree(f"/datadrive/results/inference/sentinel_train-unet/")
+        Path(f"/datadrive/results/inference/sentinel_train-unet/").mkdir(parents=True)
+
 
     def process_batch(self, batch):
         x, y, meta = [s.to(self.device) for s in batch]
         outputs = self.model(x, meta)
+        if self.iter % 100 == 0:
+            np.save(f"/datadrive/results/inference/sentinel_train-unet/x-{self.iter}.npy", x.cpu().detach().numpy())
+            np.save(f"/datadrive/results/inference/sentinel_train-unet/y-{self.iter}.npy", y.cpu().detach().numpy())
+            np.save(f"/datadrive/results/inference/sentinel_train-unet/outputs-{self.iter}.npy", outputs.cpu().detach().numpy())
         return y, outputs, meta
 
     def objective(self, y, outputs, meta):
@@ -36,6 +47,7 @@ class Algorithm:
             clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
         self.optimizer.step()
+        self.iter += 1
         return objective.item()
 
     def save(self, suffix="best"):

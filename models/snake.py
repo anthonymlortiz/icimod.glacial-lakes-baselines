@@ -198,6 +198,8 @@ def active_contour(image, snake, alpha=0.01, beta=0.1,
 
     return np.stack([y, x], axis=1)
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 class _fcycle(object):
 
@@ -525,7 +527,7 @@ def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha
 
     gimg = inverse_gaussian_gradient(img, alpha=igs_alpha, sigma=igs_sigma)
 
-    # Initialization of the level-set with a circle. ls_center_point should be 
+    # Initialization of the level-set with a circle. ls_center_point should be
     # coordinate tuple (x, y) in the center of the known polygon
     # ls_radious radious of the circle level set
     init_ls = circle_level_set(img.shape, ls_center_point, ls_radious)
@@ -539,3 +541,10 @@ def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha
                                smoothing=2, threshold='auto',
                                 balloon=1
                               ).astype(np.uint8), gimg
+=======
+def infer(x, meta):
+    c = [a_tuple[0] for a_tuple in meta]
+    r = [a_tuple[-1] for a_tuple in meta]
+    snake = active_contour(x, np.array([r, c]).T, max_num_iter=10)
+    return snake, snake, snake
+>>>>>>> Stashed changes

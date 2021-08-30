@@ -18,14 +18,6 @@ class DelseAlgo(Algorithm):
         vfs = lse.gradient(meta[:, 1:2], split=False)
         init = 10 * np.random.rand() - 5
 
-        if self.iter % 10 == 0:
-            np.save(f"/datadrive/results/inference/delse-tests/phi_0-{self.iter}.npy", phi_0.detach().cpu().numpy())
-            np.save(f"/datadrive/results/inference/delse-tests/energy-{self.iter}.npy", energy.detach().cpu().numpy())
-            np.save(f"/datadrive/results/inference/delse-tests/g-{self.iter}.npy", g.detach().cpu().numpy())
-            np.save(f"/datadrive/results/inference/delse-tests/meta-{self.iter}.npy", meta.detach().cpu().numpy())
-            np.save(f"/datadrive/results/inference/delse-tests/y-{self.iter}.npy", y.detach().cpu().numpy())
-            np.save(f"/datadrive/results/inference/delse-tests/vfs-{self.iter}.npy", vfs.detach().cpu().numpy())
-
         # compute evolution
         if self.iter < self.pretrain_iter:
             init += sdt

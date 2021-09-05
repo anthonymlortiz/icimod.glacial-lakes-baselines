@@ -156,7 +156,7 @@ def prepare_tile(fn, meta_fn, stride, chip_size):
 
 
 # generic inference function
-def inference_gen(pred_fun, processor, stride=150, chip_size=256):
+def inference_gen(pred_fun, processor, stride=128, chip_size=256):
     def inferencer(fn, meta_fn, stats_fn):
         x, meta, dim, id = prepare_tile(fn, meta_fn, stride, chip_size)
         with torch.no_grad():
@@ -169,14 +169,25 @@ def inference_gen(pred_fun, processor, stride=150, chip_size=256):
         return y_hat[None, :dim[0], :dim[1]], probs[None, :dim[0], :dim[1]]
     return inferencer
 
+
 def cpu(z):
     return z.cpu().numpy()
+
+
+def pad(pred_fun, w=24):
+    def f(x, meta):
+        x = F.pad(x, 4 * [w], value=x.mean())
+        meta = F.pad(meta, 4 * [w])
+        y_hat, probs, output = pred_fun(x, meta)
+        return y_hat[:, w:-w, w:-w], probs[:, :, w:-w, w:-w], output
+    return f
+
 
 def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix):
     y_hat, probs, counts = [np.zeros(x.shape[:2]) for _ in range(3)]
     for i, (h, w) in enumerate(sweep_ix):
         x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
-        y_hat_, probs_, _ = pred_fun(x_, meta_)
+        y_hat_, probs_, _ = pad(pred_fun)(x_, meta_)
         y_hat[h, w] += cpu(y_hat_[0])
         probs[h, w] += cpu(probs_[0, 0])
         counts[h, w] += 1

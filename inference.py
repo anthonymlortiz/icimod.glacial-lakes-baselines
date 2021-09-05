@@ -1,7 +1,6 @@
 import sys
 sys.path.append("..")
 import utils.model_utils as mu
-import models.snake as snake
 import utils.data as dt
 from options.infer_options import InferOptions
 import torch
@@ -17,31 +16,23 @@ filterwarnings("ignore", category=UserWarning)
 
 # load the model according to opts
 opts = InferOptions().parse()
-if opts.model == "snake":
-    pred_fun = mu.inference_gen(
-    snake.infer,
-    mu.processor_snake,
-    mu.postprocessor_snake,
-    device=opts.device
-    )
 
-else:
-    if opts.model == "unet":
-        model = UnetModel(opts)
-    elif opts.model == "delse":
-        model = DelseModel(opts)
+if opts.model == "unet":
+    model = UnetModel(opts)
+elif opts.model == "delse":
+    model = DelseModel(opts)
 
-    model.load_state_dict(torch.load(opts.model_pth))
-    model.eval()
-    model = model.to(opts.device)
+model.load_state_dict(torch.load(opts.model_pth))
+model.eval()
+model = model.to(opts.device)
 
-    # function that will do inference
-    base = Path(opts.data_dir)
-    pred_fun = mu.inference_gen(
-        model.infer,
-        mu.processor_chip(opts.device),
-        chip_size=opts.chip_size
-    )
+# function that will do inference
+base = Path(opts.data_dir)
+pred_fun = mu.inference_gen(
+    model.infer,
+    mu.processor_chip(opts.device),
+    chip_size=opts.chip_size
+)
 
 # get paths and run inference
 base = Path(opts.data_dir)

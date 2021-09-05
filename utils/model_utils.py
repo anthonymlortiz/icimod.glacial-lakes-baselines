@@ -217,30 +217,6 @@ def processor_chip(device):
         return x_, meta_
     return f
 
-def processor_snake(fn, meta_fn, out=(1024, 1024), **kwargs):
-    src  = rasterio.open(fn)
-    x = src.read()
-    x = np.transpose(x, (1, 2, 0))
-    x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
-    x_ = image_transforms(x_)
-    x_ = gaussian_filter(x_, 3)
-    bounds  = src.bounds
-    geom = box(*bounds)
-
-    with fiona.open("/datadrive/snake/lakes/GL_3basins_2015.shp", "r") as shapefile:
-        shapes = [feature["geometry"] for feature in shapefile]
-
-    matches = []
-    xy_polygon = []
-    for shape in shapes:
-        pt =  Polygon(shape["coordinates"][0])
-        if geom.contains(pt):
-            matches.append(shape["coordinates"][0])
-            for i, (lon, lat) in enumerate(matches[2]):
-                py, px = src.index(lon, lat)
-                xy_polygon.append((px, py))
-    return x_, xy_polygon, {"dim": x.shape}
-
 
 def blur_raster(x, sigma=2, threshold=0.5):
     blurred = gaussian_filter(x.read(), sigma=sigma)
@@ -274,10 +250,3 @@ def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
     y_ = y_.sum(axis=0, keepdims=True)
     y_hat_ = y_hat_.sum(axis=0, keepdims=True)
     return {k: m(y_hat_, y_).item() for k, m in metrics.items()}
-
-
-def postprocessor_snake(y_hat, probs, pre, **kwargs):
-    out = lambda x: x
-    return out(y_hat), out(probs)
-
-

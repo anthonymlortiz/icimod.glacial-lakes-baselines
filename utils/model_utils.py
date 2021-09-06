@@ -174,23 +174,14 @@ def cpu(z):
     return z.cpu().numpy()
 
 
-def pad(pred_fun, w=24):
-    def f(x, meta):
-        x = F.pad(x, 4 * [w], value=x.mean())
-        meta = F.pad(meta, 4 * [w])
-        y_hat, probs, output = pred_fun(x, meta)
-        return y_hat[:, w:-w, w:-w], probs[:, :, w:-w, w:-w], output
-    return f
-
-
-def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix):
+def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix, b=8):
     y_hat, probs, counts = [np.zeros(x.shape[:2]) for _ in range(3)]
-    for i, (h, w) in enumerate(sweep_ix):
+    for i, (h, w, hb, wb) in enumerate(sweep_ix):
         x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
-        y_hat_, probs_, _ = pad(pred_fun)(x_, meta_)
-        y_hat[h, w] += cpu(y_hat_[0])
-        probs[h, w] += cpu(probs_[0, 0])
-        counts[h, w] += 1
+        y_hat_, probs_, _ = pred_fun(x_, meta_)
+        y_hat[hb, wb] += cpu(y_hat_[0, b:-b, b:-b])
+        probs[hb, wb] += cpu(probs_[0, 0, b:-b, b:-b])
+        counts[hb, wb] += 1
 
     probs /= counts
     y_hat /= counts
@@ -205,7 +196,7 @@ def pad_size(dim, chip_size, stride=None):
     return [(0, s) for s in pad + [0]]
 
 
-def sweep_indices(dim, stride, chip_size):
+def sweep_indices(dim, stride, chip_size, b = 8):
     ix = [np.arange(0, dim[i], stride) for i in range(2)]
     result = []
 
@@ -213,7 +204,10 @@ def sweep_indices(dim, stride, chip_size):
         for w in ix[1]:
             result.append((
                 slice(int(h), int(h) + chip_size),
-                slice(int(w), int(w) + chip_size)
+                slice(int(w), int(w) + chip_size),
+                slice(int(h) + b, int(h) + chip_size - b),
+                slice(int(w) + b, int(w) + chip_size - b)
+
             ))
 
     return result

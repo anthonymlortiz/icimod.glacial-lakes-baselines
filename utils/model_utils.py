@@ -156,7 +156,7 @@ def prepare_tile(fn, meta_fn, stride, chip_size):
 
 
 # generic inference function
-def inference_gen(pred_fun, processor, stride=150, chip_size=256):
+def inference_gen(pred_fun, processor, stride=128, chip_size=256):
     def inferencer(fn, meta_fn, stats_fn):
         x, meta, dim, id = prepare_tile(fn, meta_fn, stride, chip_size)
         with torch.no_grad():
@@ -169,17 +169,19 @@ def inference_gen(pred_fun, processor, stride=150, chip_size=256):
         return y_hat[None, :dim[0], :dim[1]], probs[None, :dim[0], :dim[1]]
     return inferencer
 
+
 def cpu(z):
     return z.cpu().numpy()
 
-def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix):
+
+def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix, b=8):
     y_hat, probs, counts = [np.zeros(x.shape[:2]) for _ in range(3)]
-    for i, (h, w) in enumerate(sweep_ix):
+    for i, (h, w, hb, wb) in enumerate(sweep_ix):
         x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
         y_hat_, probs_, _ = pred_fun(x_, meta_)
-        y_hat[h, w] += cpu(y_hat_[0])
-        probs[h, w] += cpu(probs_[0, 0])
-        counts[h, w] += 1
+        y_hat[hb, wb] += cpu(y_hat_[0, b:-b, b:-b])
+        probs[hb, wb] += cpu(probs_[0, 0, b:-b, b:-b])
+        counts[hb, wb] += 1
 
     probs /= counts
     y_hat /= counts
@@ -194,7 +196,7 @@ def pad_size(dim, chip_size, stride=None):
     return [(0, s) for s in pad + [0]]
 
 
-def sweep_indices(dim, stride, chip_size):
+def sweep_indices(dim, stride, chip_size, b = 8):
     ix = [np.arange(0, dim[i], stride) for i in range(2)]
     result = []
 
@@ -202,7 +204,10 @@ def sweep_indices(dim, stride, chip_size):
         for w in ix[1]:
             result.append((
                 slice(int(h), int(h) + chip_size),
-                slice(int(w), int(w) + chip_size)
+                slice(int(w), int(w) + chip_size),
+                slice(int(h) + b, int(h) + chip_size - b),
+                slice(int(w) + b, int(w) + chip_size - b)
+
             ))
 
     return result
@@ -216,30 +221,6 @@ def processor_chip(device):
         meta_ = torch.from_numpy(meta).to(device).unsqueeze(0)
         return x_, meta_
     return f
-
-def processor_snake(fn, meta_fn, out=(1024, 1024), **kwargs):
-    src  = rasterio.open(fn)
-    x = src.read()
-    x = np.transpose(x, (1, 2, 0))
-    x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
-    x_ = image_transforms(x_)
-    x_ = gaussian_filter(x_, 3)
-    bounds  = src.bounds
-    geom = box(*bounds)
-
-    with fiona.open("/datadrive/snake/lakes/GL_3basins_2015.shp", "r") as shapefile:
-        shapes = [feature["geometry"] for feature in shapefile]
-
-    matches = []
-    xy_polygon = []
-    for shape in shapes:
-        pt =  Polygon(shape["coordinates"][0])
-        if geom.contains(pt):
-            matches.append(shape["coordinates"][0])
-            for i, (lon, lat) in enumerate(matches[2]):
-                py, px = src.index(lon, lat)
-                xy_polygon.append((px, py))
-    return x_, xy_polygon, {"dim": x.shape}
 
 
 def blur_raster(x, sigma=2, threshold=0.5):
@@ -274,10 +255,3 @@ def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
     y_ = y_.sum(axis=0, keepdims=True)
     y_hat_ = y_hat_.sum(axis=0, keepdims=True)
     return {k: m(y_hat_, y_).item() for k, m in metrics.items()}
-
-
-def postprocessor_snake(y_hat, probs, pre, **kwargs):
-    out = lambda x: x
-    return out(y_hat), out(probs)
-
-

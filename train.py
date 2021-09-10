@@ -1,5 +1,4 @@
 import sys
-import shutil
 import os
 import torch
 import utils.metrics as mt
@@ -41,8 +40,8 @@ model = model.to(torch.device(opts.device))
 # Define loss function or criterion based on opts
 if opts.loss == "ce":
     loss = losses.MulticlassCrossEntropy()
-elif opts.loss == "wbce":
-    loss = losses.WeightedBCELoss()
+elif opts.loss == "wce":
+    loss = losses.WeightedCELoss()
 elif opts.loss == "delse":
     loss = losses.DelseLoss(opts.delse_epsilon)
 else:

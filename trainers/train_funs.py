@@ -45,15 +45,36 @@ def validate(algorithm, dataset):
     return {
         "avg": metrics.mean(axis=0),
         "sample": metrics,
-        "objective": np.mean(objective)
+        "objective": np.mean(objective),
+        "batch": batch,
+        "outputs": outputs
     }
 
 
+def save_channels(writer, x, prefix):
+    #import pdb; pdb.set_trace()
+    if x.ndim == 3:
+        writer.add_images(f"{prefix}", x.unsqueeze(1))
+        return
+
+    for c in range(x.shape[1]):
+        writer.add_images(f"{prefix}/{c}", x[:, c:(c + 1)])
+
+
 def log_epoch(writer, epoch, metrics):
+    print(epoch)
     for split in ["val", "train"]:
         writer.add_scalar(f"Obj/{split}", metrics[split]["objective"], epoch)
         for m in metrics[split]["avg"].index:
             writer.add_scalar(f"{m}/{split}", metrics[split]["avg"][m], epoch)
+
+        # save each channel separately
+        x, y, meta = metrics[split]["batch"]
+        save_channels(writer, x, f"batch/{split}/x")
+        save_channels(writer, y, f"batch/{split}/y")
+        save_channels(writer, meta, f"batch/{split}/meta")
+        for i, output in enumerate(metrics[split]["outputs"]):
+            save_channels(writer, output, f"batch/{split}/output/{i}")
 
 
 def save_if_needed(algorithm, metrics, best_val, epoch, opts):

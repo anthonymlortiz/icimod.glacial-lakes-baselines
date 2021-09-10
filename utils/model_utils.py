@@ -141,62 +141,86 @@ def load_options(file_name):
         opt = pickle.load(open(file_name + '.pkl', 'rb'))
     return opt
 
+def prepare_tile(fn, meta_fn, stride, chip_size):
+    x = rasterio.open(fn).read()
+    meta = rasterio.open(meta_fn).read()
+    x = np.moveaxis(x, 0, 2)
+    meta = np.moveaxis(meta, 0, 2)
+    dim = x.shape
+
+    # pad the data
+    pad = pad_size(x.shape, chip_size, stride)
+    x = np.pad(x, pad)
+    meta = np.pad(meta, pad)
+    return x, meta, dim, Path(fn).stem
+
 
 # generic inference function
-def inference_gen(pred_fun, processor, postprocessor, **kwargs):
+def inference_gen(pred_fun, processor, stride=128, chip_size=256):
     def inferencer(fn, meta_fn, stats_fn):
-        x, meta, pre = processor(fn, meta_fn, stats_fn, **kwargs)
+        x, meta, dim, id = prepare_tile(fn, meta_fn, stride, chip_size)
         with torch.no_grad():
-            y_hat, probs, _ = pred_fun(x, meta)
+            sweep_ix = sweep_indices(dim, stride, chip_size)
+            y_hat, probs = inference_sweep(
+                x, meta, stats_fn, id,
+                pred_fun, processor, sweep_ix
+            )
 
-        return postprocessor(y_hat, probs, pre, **kwargs)
+        return y_hat[None, :dim[0], :dim[1]], probs[None, :dim[0], :dim[1]]
     return inferencer
 
 
+def cpu(z):
+    return z.cpu().numpy()
+
+
+def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix, b=8):
+    y_hat, probs, counts = [np.zeros(x.shape[:2]) for _ in range(3)]
+    for i, (h, w, hb, wb) in enumerate(sweep_ix):
+        x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
+        y_hat_, probs_, _ = pred_fun(x_, meta_)
+        y_hat[hb, wb] += cpu(y_hat_[0, b:-b, b:-b])
+        probs[hb, wb] += cpu(probs_[0, 0, b:-b, b:-b])
+        counts[hb, wb] += 1
+
+    probs /= counts
+    y_hat /= counts
+    return 1 * (y_hat > 0.5), probs
+
+
+def pad_size(dim, chip_size, stride=None):
+    if stride is None:
+        stride = chip_size
+
+    pad = [stride * (dim[i] // stride) + chip_size - dim[i] for i in range(2)]
+    return [(0, s) for s in pad + [0]]
+
+
+def sweep_indices(dim, stride, chip_size, b = 8):
+    ix = [np.arange(0, dim[i], stride) for i in range(2)]
+    result = []
+
+    for h in ix[0]:
+        for w in ix[1]:
+            result.append((
+                slice(int(h), int(h) + chip_size),
+                slice(int(w), int(w) + chip_size),
+                slice(int(h) + b, int(h) + chip_size - b),
+                slice(int(w) + b, int(w) + chip_size - b)
+
+            ))
+
+    return result
+
+
 # example input pre and postprocessing functions for inference
-def processor_raster(fn, meta_fn, stats_fn, device, out=(1024, 1024), **kwargs):
-    x = rasterio.open(fn).read()
-    meta = rasterio.open(meta_fn).read()
-
-    x = np.transpose(x, (1, 2, 0))
-    x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
-    meta_ = np.pad(meta, ((0, 0), (0, out[0] - meta.shape[1]), (0, out[1] - meta.shape[2])))
-
-    id = Path(fn).stem
-    x_ = image_transforms(x_, stats_fn, id).to(device).unsqueeze(0)
-    meta_ = torch.from_numpy(meta_).to(device).unsqueeze(0)
-    return x_, meta_, {"dim": x.shape}
-
-def processor_snake(fn, meta_fn, out=(1024, 1024), **kwargs):
-    src  = rasterio.open(fn)
-    x = src.read()
-    x = np.transpose(x, (1, 2, 0))
-    x_ = np.pad(x, ((0, out[0] - x.shape[0]), (0, out[1] - x.shape[1]), (0, 0)))
-    x_ = image_transforms(x_)
-    x_ = gaussian_filter(x_, 3)
-    bounds  = src.bounds
-    geom = box(*bounds)
-
-    with fiona.open("/datadrive/snake/lakes/GL_3basins_2015.shp", "r") as shapefile:
-        shapes = [feature["geometry"] for feature in shapefile]
-
-    matches = []
-    xy_polygon = []
-    for shape in shapes:
-        pt =  Polygon(shape["coordinates"][0])
-        if geom.contains(pt):
-            matches.append(shape["coordinates"][0])
-            for i, (lon, lat) in enumerate(matches[2]):
-                py, px = src.index(lon, lat)
-                xy_polygon.append((px, py))
-    return x_, xy_polygon, {"dim": x.shape}
-
-
-def postprocessor_raster(y_hat, probs, pre, **kwargs):
-    y_hat = y_hat[None, :, :pre["dim"][0], :pre["dim"][1]]
-    probs = probs[:, :, :pre["dim"][0], :pre["dim"][1]]
-    cpu = lambda x: x.cpu().numpy().squeeze(0)
-    return cpu(y_hat), cpu(probs)
+def processor_chip(device):
+    def f(x, meta, stats_fn, id):
+        x_ = image_transforms(x, stats_fn, id).to(device).unsqueeze(0)
+        meta = np.moveaxis(meta, 2, 0)
+        meta_ = torch.from_numpy(meta).to(device).unsqueeze(0)
+        return x_, meta_
+    return f
 
 
 def blur_raster(x, sigma=2, threshold=0.5):
@@ -231,10 +255,3 @@ def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
     y_ = y_.sum(axis=0, keepdims=True)
     y_hat_ = y_hat_.sum(axis=0, keepdims=True)
     return {k: m(y_hat_, y_).item() for k, m in metrics.items()}
-
-
-def postprocessor_snake(y_hat, probs, pre, **kwargs):
-    out = lambda x: x
-    return out(y_hat), out(probs)
-
-

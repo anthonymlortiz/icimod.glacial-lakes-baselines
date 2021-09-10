@@ -1,10 +1,13 @@
 from data.streaming_dataset import StreamingGeospatialDataset
-import torch
 from utils import utils
-import numpy as np
 import glob
-import pandas as pd
+import numpy as np
 import os
+import pandas as pd
+import random
+import torch
+import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 
 
 def get_stats_fn(base_dir, split, dataset):
@@ -58,7 +61,6 @@ def image_transforms(img, stats_fn, id):
     img = np.rollaxis(img, 2, 0).astype(np.float32)
     img = np.nan_to_num(img)
     img = torch.from_numpy(img)
-
     return img
 
 
@@ -67,6 +69,15 @@ def get_imagery_statistics(stats_fn, id):
     means = df.loc[id].filter(like="mean").values
     stds = df.loc[id].filter(like="sdev").values
     return means, stds
+
+def joint_transforms(img, labels, meta):
+    for f in [TF.hflip, TF.vflip]:
+        if random.random() > 0.5:
+            img = f(img)
+            labels = f(labels)
+            meta = f(meta)
+
+    return img, labels, meta
 
 
 def load_dataset(opts):
@@ -95,9 +106,17 @@ def load_dataset(opts):
         val_meta_fns = val_meta_fns[:opts.subset_size]
 
     stats_fn = get_stats_fn(opts.data_dir, "train", opts.dataset)
-    trn = StreamingGeospatialDataset(train_img_fns, stats_fn, train_label_fns,train_meta_fns,  groups=train_img_fns, chip_size=opts.chip_size, num_chips_per_tile=10, image_transform=img_transforms, verbose=False)
+    trn = StreamingGeospatialDataset(
+        train_img_fns, stats_fn, train_label_fns, train_meta_fns,
+        groups=train_img_fns, chip_size=opts.chip_size, num_chips_per_tile=2,
+        image_transform=img_transforms, joint_transform=joint_transforms
+    )
     stats_fn = get_stats_fn(opts.data_dir, "val", opts.dataset)
-    val = StreamingGeospatialDataset(val_img_fns, stats_fn, val_label_fns, val_meta_fns, groups=val_img_fns, chip_size=opts.chip_size, num_chips_per_tile=5, image_transform=img_transforms, verbose=False)
+    val = StreamingGeospatialDataset(
+        val_img_fns, stats_fn, val_label_fns, val_meta_fns, groups=val_img_fns,
+        chip_size=opts.chip_size, num_chips_per_tile=1,
+        image_transform=img_transforms, verbose=False
+    )
 
     trn_loader = torch.utils.data.DataLoader(trn, batch_size=opts.batch_size, num_workers=opts.num_workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(val, batch_size=opts.batch_size, num_workers=opts.num_workers, pin_memory=True)

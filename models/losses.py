@@ -62,23 +62,21 @@ class FocalLoss2d(nn.Module):
             return loss.sum()
 
 
-class WeightedBCELoss(nn.Module):
-    """Weighted binary crossentropy, by default weights are [0.5, 0.5],
+class WeightedCELoss(nn.Module):
+    """Weighted crossentropy, by default weights are [0.5, 0.5],
     equivalent to standard BCE
 
     Args:
         nn ([type]): [description]
     """
 
-    def __init__(self, weights=[0.2, 0.8], batch=True):
-        super(WeightedBCELoss, self).__init__()
-        self.batch = batch
+    def __init__(self, weights=[0.3, 0.7], batch=True):
+        super(WeightedCELoss, self).__init__()
         self.class_weights = torch.FloatTensor(weights).cuda()
-        self.bce_loss = nn.CrossEntropyLoss(weight=self.class_weights)
+        self.ce_loss = nn.CrossEntropyLoss(weight=self.class_weights)
 
     def __call__(self, y_pred, y_true):
-        loss = self.bce_loss(y_pred, y_true.long())
-        return loss
+        return self.ce_loss(y_pred, y_true.long())
 
 
 class DiceBCELoss(nn.Module):
@@ -91,7 +89,7 @@ class DiceBCELoss(nn.Module):
     def __init__(self, batch=True):
         super(DiceBCELoss, self).__init__()
         self.batch = batch
-        self.bce_loss = nn.BCELoss()
+        self.bce_loss = nn.CrossEntropyLoss()
 
     def soft_dice_coeff(self, y_pred, y_true):
         smooth = 0.001  # may change
@@ -111,8 +109,9 @@ class DiceBCELoss(nn.Module):
         return loss
 
     def __call__(self, y_pred, y_true):
+        y_true = y_true.long()
         a = self.bce_loss(y_pred, y_true)
-        b = self.soft_dice_loss(y_pred, y_true)
+        b = self.soft_dice_loss(torch.sigmoid(y_pred[:, 1]), y_true)
         return a + b
 
 

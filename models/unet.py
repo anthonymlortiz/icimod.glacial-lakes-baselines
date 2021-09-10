@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from models.base_network import BaseNetwork
 
-
 class ConvBlock(nn.Module):
     """U-Net constractive blocks
 
@@ -47,7 +46,8 @@ class UnetModel(BaseNetwork):
         self.downblocks = nn.ModuleList()
         self.upblocks = nn.ModuleList()
         self.pool = nn.MaxPool2d(2, 2)
-        self.in_channels = opts.input_channels
+        self.in_channels = opts.input_channels + 1 * (opts.divergence)
+        self.divergence = opts.divergence
         self.out_channels = opts.first_layer_filters
         self.net_depth = opts.net_depth
         self.num_classes = opts.num_classes
@@ -71,19 +71,22 @@ class UnetModel(BaseNetwork):
         self.seg_layer = nn.Conv2d(2 * self.out_channels, self.num_classes, kernel_size=1)
 
     def forward(self, x, meta=None):
-        decoder_outputs = []
+        if self.divergence:
+            x = torch.cat([meta[:, 3:4], x], dim=1)  # add divergence channel
 
+        decoder_outputs = []
         for op in self.downblocks:
             decoder_outputs.append(op(x))
             x = self.pool(decoder_outputs[-1])
 
         x = self.middle_conv(x)
-
         for op in self.upblocks:
             x = op(x, decoder_outputs.pop())
-        return self.seg_layer(x)
 
-    def infer(self, x, meta=None, threshold=0.4):
+        x = self.seg_layer(x)
+        return torch.sigmoid(x)
+
+    def infer(self, x, meta=None, threshold=0.6):
         with torch.no_grad():
             probs = self.forward(x, meta)
-            return 1. * (probs[:, 1] > threshold), probs, probs
+            return 1. * (probs[:, 1] > threshold), probs[:, 1:2], probs

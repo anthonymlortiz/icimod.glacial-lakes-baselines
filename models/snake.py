@@ -581,4 +581,4 @@ def snake_lakes_GAC_from_polygon(x, polygon, iterations=300, igs_alpha=100, igs_
                                       init_level_set=init_ls,
                                smoothing=2, threshold='auto',
                                 balloon=1, iter_callback=callback
-                              ), evolution
+                              ).astype(np.uint8), evolution

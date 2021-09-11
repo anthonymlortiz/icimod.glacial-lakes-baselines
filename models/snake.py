@@ -4,6 +4,7 @@ from skimage.filters import sobel
 from skimage import img_as_float
 from scipy import ndimage as ndi
 from itertools import cycle
+from skimage.draw import polygon
 
 
 def active_contour(image, snake, alpha=0.01, beta=0.1,
@@ -316,6 +317,14 @@ def circle_level_set(image_shape, center=None, radius=None):
     return res
 
 
+def level_set_from_polygon(shape, xy_polygon):
+    img = np.zeros(shape, 'uint8')
+    poly = xy_polygon
+    rr, cc = polygon([a_tuple[1] for a_tuple in poly], [a_tuple[0] for a_tuple in poly], img.shape)
+    img[rr,cc] = 1
+    return img
+
+
 def ellipsoid_level_set(image_shape, center=None, semi_axis=None):
     """Create a ellipsoid level set with binary values.
     Parameters
@@ -472,7 +481,7 @@ def morphological_geodesic_active_contour(gimage, iterations,
     _check_input(image, init_level_set)
 
     if threshold == 'auto':
-        threshold = np.percentile(image, 40)
+        threshold = np.percentile(image, 50)
 
     structure = np.ones((3,) * len(image.shape), dtype=np.int8)
     dimage = np.gradient(image)
@@ -516,6 +525,16 @@ def rgb2gray(img):
     return 0.2989 * img[..., 0] + 0.587 * img[..., 1] + 0.114 * img[..., 2]
 
 
+def store_evolution_in(lst):
+    """Returns a callback function to store the evolution of the level sets in
+    the given list.
+    """
+
+    def _store(x):
+        lst.append(np.copy(x))
+
+    return _store
+
 
 def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha=100, igs_sigma=2):
     # Load the image.
@@ -530,11 +549,35 @@ def snake_lakes_GAC(x, ls_center_point, iterations=300, ls_radious=10, igs_alpha
     init_ls = circle_level_set(img.shape, ls_center_point, ls_radious)
 
     # Callback for visual plotting
-    #callback = visual_callback_2d(imgcolor)
+    evolution = []
+    callback = store_evolution_in(evolution)
 
     # Morphological GAC
     return morphological_geodesic_active_contour(gimg, iterations=iterations,
                                       init_level_set=init_ls,
                                smoothing=2, threshold='auto',
-                                balloon=1
-                              ).astype(np.uint8), gimg
+                                balloon=1, iter_callback=callback
+                              ).astype(np.uint8), evolution
+
+
+def snake_lakes_GAC_from_polygon(x, polygon, iterations=300, igs_alpha=100, igs_sigma=2.25):
+    # Load the image.
+    imgcolor = x/256.
+    img = rgb2gray(imgcolor)
+
+
+    gimg = inverse_gaussian_gradient(img, alpha=igs_alpha, sigma=igs_sigma)
+    
+
+    # Initialization of the level-set.
+    init_ls = level_set_from_polygon(img.shape, polygon)
+
+    # Callback for visual plotting
+    evolution = []
+    callback = store_evolution_in(evolution)
+    # Morphological GAC
+    return morphological_geodesic_active_contour(gimg, iterations=iterations,
+                                      init_level_set=init_ls,
+                               smoothing=2, threshold='auto',
+                                balloon=1, iter_callback=callback
+                              ).astype(np.uint8), evolution

@@ -36,20 +36,20 @@ def get_bing_glid_from_fn(bing_fn):
 
 def get_sentinel_glid_from_fn(bing_fn):
     base = os.path.basename(bing_fn)
-    gl_id = os.path.splitext(base)[0].splitext('_')
+    gl_id, _ = base.split("_")
     return gl_id
 
 
 def buffer_polygon_in_meters(polygon, buffer):
     proj_meters = pyproj.Proj(init='epsg:3857')
     proj_latlng = pyproj.Proj(init='epsg:4326')
-    
+
     project_to_meters = partial(pyproj.transform, proj_latlng, proj_meters)
     project_to_latlng = partial(pyproj.transform, proj_meters, proj_latlng)
-    
-    
+
+
     pt_meters = transform(project_to_meters, polygon)
-    
+
     buffer_meters = pt_meters.buffer(buffer)
     buffer_polygon = transform(project_to_latlng, buffer_meters)
     return buffer_polygon
@@ -61,7 +61,7 @@ def get_glacial_lake_2015_outline_from_glid(lakes_shapefile_2015, glid):
             if glid == feature['properties']["GL_ID"]:
                 area = feature['properties']["Area"]
                 polygon = Polygon(feature["geometry"]["coordinates"][0])
-                return area, polygon 
+                return area, polygon
 
 
 def get_buffer_from_area(area, percentage):
@@ -112,7 +112,7 @@ def main():
             if args.image_source == "sentinel":
                 gl_id = get_sentinel_glid_from_fn(input_fn)
             elif args.image_source == "bing":
-                gl_id = get_bing_glid_from_fn(input_fn)   
+                gl_id = get_bing_glid_from_fn(input_fn)
             else:
                 raise NotImplementedError("Image source not supported")
 

@@ -51,18 +51,19 @@ def validate(algorithm, dataset):
     }
 
 
-def save_channels(writer, x, prefix):
-    #import pdb; pdb.set_trace()
+def save_channels(writer, x, prefix, epoch):
     if x.ndim == 3:
-        writer.add_images(f"{prefix}", x.unsqueeze(1))
+        writer.add_images(f"{prefix}", x.unsqueeze(1), global_step=epoch)
         return
 
     for c in range(x.shape[1]):
-        writer.add_images(f"{prefix}/{c}", x[:, c:(c + 1)])
+        writer.add_images(f"{prefix}/{c}", x[:, c:(c + 1)], global_step=epoch)
 
 
-def log_epoch(writer, epoch, metrics):
-    print(epoch)
+def log_epoch(writer, epoch, metrics, save=1):
+    if not epoch % save == 0:
+        return
+
     for split in ["val", "train"]:
         writer.add_scalar(f"Obj/{split}", metrics[split]["objective"], epoch)
         for m in metrics[split]["avg"].index:
@@ -70,11 +71,11 @@ def log_epoch(writer, epoch, metrics):
 
         # save each channel separately
         x, y, meta = metrics[split]["batch"]
-        save_channels(writer, x, f"batch/{split}/x")
-        save_channels(writer, y, f"batch/{split}/y")
-        save_channels(writer, meta, f"batch/{split}/meta")
+        save_channels(writer, x, f"batch/{split}/x", epoch)
+        save_channels(writer, y, f"batch/{split}/y", epoch)
+        save_channels(writer, meta, f"batch/{split}/meta", epoch)
         for i, output in enumerate(metrics[split]["outputs"]):
-            save_channels(writer, output, f"batch/{split}/output/{i}")
+            save_channels(writer, output, f"batch/{split}/output/{i}", epoch)
 
 
 def save_if_needed(algorithm, metrics, best_val, epoch, opts):

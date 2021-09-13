@@ -99,7 +99,7 @@ class ClassifierModule(nn.Module):
         super(ClassifierModule, self).__init__()
         self.conv2d_list = nn.ModuleList()
         for dilation, padding in zip(dilation_series, padding_series):
-            self.conv2d_list.append(nn.Conv2d(2048, n_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
+            self.conv2d_list.append(nn.Conv2d(512, n_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
 
         for m in self.conv2d_list:
             m.weight.data.normal_(0, 0.01)
@@ -115,7 +115,7 @@ class PSPModule(nn.Module):
     """
     Pyramid Scene Parsing module
     """
-    def __init__(self, in_features=2048, out_features=512, sizes=(1, 2, 3, 6), n_classes=1):
+    def __init__(self, in_features=512, out_features=512, sizes=(1, 2, 3, 6), n_classes=1):
         super(PSPModule, self).__init__()
         self.stages = []
         self.stages = nn.ModuleList([self._make_stage_1(in_features, size) for size in sizes])
@@ -155,7 +155,7 @@ class PSPModule(nn.Module):
 
 class ResNet(nn.Module):
     def __init__(self, block, layers, n_classes, nInputChannels=3, classifier="atrous",
-                 dilations=(2, 4), strides=(2, 2, 2, 1, 1), _print=False, feature_dim=2048):
+                 dilations=(2, 4), strides=(2, 2, 2, 1, 1), _print=False, feature_dim=512):
         if _print:
             print("Constructing ResNet model...")
             print("Dilations: {}".format(dilations))
@@ -348,7 +348,7 @@ class SkipResnet(nn.Module):
         up3 = torch.nn.Upsample(scale_factor=4, mode='bilinear')
         self.res2_concat = nn.Sequential(concat3, bn3, relu3, up3)
 
-        concat4 = nn.Conv2d(2048, concat_channels, kernel_size=3, padding=1, bias=False)
+        concat4 = nn.Conv2d(4 * 512, concat_channels, kernel_size=3, padding=1, bias=False)
         bn4 = nn.BatchNorm2d(concat_channels)
         relu4 = nn.ReLU(inplace=True)
         up4 = torch.nn.Upsample(scale_factor=4, mode='bilinear')
@@ -434,7 +434,7 @@ class SkipResnet(nn.Module):
 
 
 def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, classifier="atrous", dilations=(2, 4),
-                       strides=(2, 2, 2, 1, 1), layers=(3, 4, 23, 3), feature_dim=2048, delse_pth=None):
+                       strides=(2, 2, 2, 1, 1), layers=(2, 2, 8, 2), feature_dim=128, delse_pth=None):
     """Constructs a ResNet-101 model.
     """
     model = ResNet(Bottleneck, layers, n_classes[0], nInputChannels=nInputChannels,
@@ -443,15 +443,15 @@ def build_resnet_model(n_classes=(1, 2), pretrained=True, nInputChannels=4, clas
         model_full = Res_Deeplab(n_classes[0], pretrained=pretrained, delse_pth=delse_pth)
         model.load_pretrained_ms(model_full, nInputChannels=nInputChannels)
     if len(n_classes) >= 2:
-        model.layer5_1 = PSPModule(in_features=feature_dim, out_features=512, sizes=(1, 2, 3, 6), n_classes=n_classes[1])
+        model.layer5_1 = PSPModule(in_features=feature_dim, out_features=128, sizes=(1, 2, 3, 6), n_classes=n_classes[1])
         weight_init(model.layer5_1)
     if len(n_classes) >= 3:
-        model.layer5_2 = PSPModule(in_features=feature_dim, out_features=512, sizes=(1, 2, 3, 6), n_classes=n_classes[2])
+        model.layer5_2 = PSPModule(in_features=feature_dim, out_features=128, sizes=(1, 2, 3, 6), n_classes=n_classes[2])
         weight_init(model.layer5_2)
     return model
 
 
-def backend_cnn_model(input_channels, model_type="resnet101-skip-pretrain", delse_pth=None, classifier="psp", concat_dim=128):
+def backend_cnn_model(input_channels, model_type="resnet101-skip-pretrain", delse_pth=None, classifier="atrous", concat_dim=128):
 
     if model_type == 'resnet101':
         model = build_resnet_model(n_classes=(1, 2), pretrained=False, nInputChannels=input_channels,

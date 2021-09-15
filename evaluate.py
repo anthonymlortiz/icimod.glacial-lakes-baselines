@@ -31,7 +31,7 @@ m = []
 
 for i, (path, sample_id) in tqdm(eval_paths.iterrows(), total=len(eval_paths)):
     # get polygon predictions
-    gl_id, _ = sample_id.split("_")
+    gl_id = sample_id.split("_")[0]
     y_hat = rasterio.open(path)
     y_hat_poly = mu.polygonize_preds(y_hat, buffer.loc[gl_id], tol=opts.tol)
     y_hat_poly.to_file(save_dir / f"{sample_id}.geojson", driver="GeoJSON")

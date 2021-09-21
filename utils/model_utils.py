@@ -156,7 +156,7 @@ def prepare_tile(fn, meta_fn, stride, chip_size):
 
 
 # generic inference function
-def inference_gen(pred_fun, processor, stride=128, chip_size=256):
+def inference_gen(pred_fun, processor, stride=1000, chip_size=1024):
     def inferencer(fn, meta_fn, stats_fn):
         x, meta, dim, id = prepare_tile(fn, meta_fn, stride, chip_size)
         with torch.no_grad():
@@ -174,7 +174,7 @@ def cpu(z):
     return z.cpu().numpy()
 
 
-def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix, b=8):
+def inference_sweep(x, meta, stats_fn, id, pred_fun, processor, sweep_ix, b=12):
     y_hat, probs, counts = [np.zeros(x.shape[:2]) for _ in range(3)]
     for i, (h, w, hb, wb) in enumerate(sweep_ix):
         x_, meta_ = processor(x[h, w], meta[h, w], stats_fn, id)
@@ -196,7 +196,7 @@ def pad_size(dim, chip_size, stride=None):
     return [(0, s) for s in pad + [0]]
 
 
-def sweep_indices(dim, stride, chip_size, b = 8):
+def sweep_indices(dim, stride, chip_size, b=12):
     ix = [np.arange(0, dim[i], stride) for i in range(2)]
     result = []
 

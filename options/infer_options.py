@@ -11,7 +11,7 @@ class InferOptions(BaseOptions):
         parser.add_argument('--stats_fn', type=str, default='sentinel/splits/train/statistics.csv', help='Relative path to stats.csv')
         parser.add_argument('--divergence', default=False, action='store_true', help='Add divergence feature?')
         parser.add_argument('--model_pth', type=str, default='/datadrive/results/backup/sentinel-unet_best.pth', help='Absolute path to model')
-        parser.add_argument('--chip_size', type=int, default=256, help='Model input / output chip dimension')
+        parser.add_argument('--chip_size', type=int, default=1024, help='Model input / output chip dimension')
         return parser
 
 

@@ -35,7 +35,7 @@ class BaseOptions():
         parser.add_argument('--first_layer_filters', type=int, default=8, help='Number of filters in the first UNet layer')
         parser.add_argument('--net_depth', type=int, default=4, help='Number of layers for the model')
         parser.add_argument('--checkpoint_file', type=str, default='none', help='Model to resume. If training from scratch use none')
-        parser.add_argument('--delse_iterations', type=int, default=5, help='How many level set updates for DELSE?')
+        parser.add_argument('--delse_iterations', type=int, default=3, help='How many level set updates for DELSE?')
         parser.add_argument('--dt_max', type=int, default=30, help='Maximum gradient in DELSE update?')
         parser.add_argument('--delse_pth', type=str, default="/datadrive/snake/models/MS_DeepLab_resnet_trained_VOC.pth", help='Path to pretrained model for DELSE')
         parser.add_argument('--delse_pretrain', type=int, default=6000, help='How many iterations of DELSE to pretrain all losses?')

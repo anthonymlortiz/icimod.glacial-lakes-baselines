@@ -93,7 +93,7 @@ def NeumannBoundCond(f):
     return torch.reshape(g, (N, K, H, W))
 
 
-def levelset_evolution(phi, vf, g=None, T=2, dt_max=30, timestep=1, dirac=0.4):
+def levelset_evolution(phi, vf, g=None, T=3, dt_max=30, timestep=.1, dirac=0.4):
     vy = vf[:, 0, :, :].unsqueeze(1)
     vx = vf[:, 1, :, :].unsqueeze(1)
 
@@ -105,7 +105,7 @@ def levelset_evolution(phi, vf, g=None, T=2, dt_max=30, timestep=1, dirac=0.4):
         diracPhi = Dirac(phi, dirac, dt_max)
         motion_term = vx * phi_x + vy * phi_y
         phi +=  timestep * diracPhi * (motion_term + g * curvature.detach())
-        phi += 0.05 * distReg_p2(phi.detach())
+        phi += 0.1 * distReg_p2(phi.detach())
     return phi
 
 

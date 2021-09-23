@@ -38,7 +38,7 @@ def recall(y_pred, y, label=1):
     return torch.true_divide(tp, (tp + fn + 0.00001))
 
 
-def frechet_distance(y_pred, y):
+def frechet_distance(y_pred, y, max_len=200):
     if type(y) == torch.Tensor or type(y_pred) == torch.Tensor:
         y = y.detach().cpu().numpy()
         y_pred = y_pred.detach().cpu().numpy()
@@ -50,7 +50,8 @@ def frechet_distance(y_pred, y):
     y_pred = find_contours(y_pred.squeeze())[0]
 
     # normalize and compute similarity
-    return similaritymeasures.frechet_dist(y, y_pred)
+    freq = max(len(y) // max_len, 1)
+    return similaritymeasures.frechet_dist(y[::freq], y_pred[::freq])
 
 
 def pixel_accuracy(pred_segm, gt_segm):

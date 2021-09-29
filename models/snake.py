@@ -482,7 +482,7 @@ def morphological_geodesic_active_contour(gimage, iterations,
     _check_input(image, init_level_set)
 
     if threshold == 'auto':
-        threshold = np.percentile(image, 50)
+        threshold = np.percentile(image, 35)
 
     structure = np.ones((3,) * len(image.shape), dtype=np.int8)
     dimage = np.gradient(image)

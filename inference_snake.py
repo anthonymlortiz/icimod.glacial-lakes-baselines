@@ -36,7 +36,7 @@ def get_bing_glid_from_fn(bing_fn):
 
 def get_sentinel_glid_from_fn(bing_fn):
     base = os.path.basename(bing_fn)
-    gl_id = os.path.splitext(base)[0].splitext('_')
+    gl_id, _ = base.split("_")
     return gl_id
 
 
@@ -95,8 +95,15 @@ def main():
     #-------------------
     # Load input
     #-------------------
-    filenames = glob.glob(args.input_dir +"*.tif")
+    invalid_glids = ["GL085780E28441N", "GL086532E28185N", "GL087479E28172N", "GL085948E28314N", "GL087611E28155N", "GL085890E28371N", "GL087437E28742N", 
+    "GL086086E28221N", "GL086157E28303N", "GL086447E27946N", "GL088002E27928N"]
+    s2_invalid = ["GL087437E28742N", "GL085890E28371N", "GL085780E28441N", "GL087611E28155N", "GL085948E28314N", "GL087479E28172N", "GL086157E28303N"]
+    filenames =  sorted(glob.glob(args.input_dir +"*.tif"))
+    i = 0
     for input_fn in filenames:
+        i+=1
+        if i<162:
+            continue
         output_fn = args.output_dir + str(os.path.basename(input_fn))
         with utils.Timer("loading input", args.verbose):
 
@@ -111,38 +118,47 @@ def main():
             r, c, _ = img_data.shape
             if args.image_source == "sentinel":
                 gl_id = get_sentinel_glid_from_fn(input_fn)
+                if gl_id in s2_invalid:
+                    continue
             elif args.image_source == "bing":
                 gl_id = get_bing_glid_from_fn(input_fn)   
+                if gl_id in invalid_glids:
+                    continue
             else:
                 raise NotImplementedError("Image source not supported")
 
+            print(gl_id)
+
+
             area, polygon = get_glacial_lake_2015_outline_from_glid(args.gl_filename, gl_id)
-            buffer_size = get_buffer_from_area(area, -25)
-            buffered_polygon = buffer_polygon_in_meters(polygon, buffer_size)
-            xy_buffered_polygon = []
-            for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
-                py, px = f.index(lon, lat)
-                xy_buffered_polygon.append((px, py))
-            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=250)
+            
+            if area >= 0.01934126:
+                buffer_size = get_buffer_from_area(area, -20)
+                buffered_polygon = buffer_polygon_in_meters(polygon, buffer_size)
+                xy_buffered_polygon = []
+                for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
+                    py, px = f.index(lon, lat)
+                    xy_buffered_polygon.append((px, py))
+                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=150)
 
-            #-------------------
-            # Save output
-            #-------------------
-            with utils.Timer("writing output", args.verbose):
-                output_profile = input_profile.copy()
-                output_profile["dtype"] = "uint8"
-                output_profile["count"] = 1
-                output_profile["nodata"] = 0
+                #-------------------
+                # Save output
+                #-------------------
+                with utils.Timer("writing output", args.verbose):
+                    output_profile = input_profile.copy()
+                    output_profile["dtype"] = "uint8"
+                    output_profile["count"] = 1
+                    output_profile["nodata"] = 0
 
-                with rasterio.open(output_fn, "w", **output_profile) as f:
-                    f.write(snake_results, 1)
-                    f.write_colormap(1, {
-                        0: (0, 0, 0, 0),
-                        1: (255, 0, 0, 255)
-                    })
+                    with rasterio.open(output_fn, "w", **output_profile) as f:
+                        f.write(snake_results, 1)
+                        f.write_colormap(1, {
+                            0: (0, 0, 0, 0),
+                            1: (255, 0, 0, 255)
+                        })
 
-                output_fn_npz = output_fn.replace('.tif', '.npy')
-                np.save(output_fn_npz, np.asarray(evolution))
+                    output_fn_npz = output_fn.replace('.tif', '.npy')
+                    np.save(output_fn_npz, np.asarray(evolution))
 
 if __name__ == "__main__":
     main()

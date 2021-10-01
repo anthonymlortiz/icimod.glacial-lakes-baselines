@@ -9,6 +9,11 @@ import pandas as pd
 import shutil
 from scipy import ndimage as ndi
 from tqdm import tqdm
+from functools import partial
+from shapely.ops import transform
+import pyproj
+from warnings import warn, filterwarnings
+filterwarnings("ignore", category=FutureWarning)
 
 
 def extreme_points(mask, pert=0):
@@ -82,12 +87,37 @@ def sdt(y, dist_max=40):
     return dts, sdts
 
 
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.75):
+    proj_meters = pyproj.Proj('epsg:3857')
+    proj_latlng = pyproj.Proj('epsg:4326')
+
+    project_to_meters = partial(pyproj.transform, proj_latlng, proj_meters)
+    project_to_latlng = partial(pyproj.transform, proj_meters, proj_latlng)
+    pt_meters = transform(project_to_meters, polygon)
+
+    buffer_meters = pt_meters
+    while buffer_meters.area > percentage * pt_meters.area:
+        buffer_meters = buffer_meters.buffer(buffer)
+
+    buffer_polygon = transform(project_to_latlng, buffer_meters.buffer(0))
+    return gpd.GeoDataFrame(geometry=[buffer_polygon.convex_hull], crs=polygon.crs)
+
+
+def get_buffer_from_area(area, step_percentage=-1):
+    #Area in sq km
+    prop = (100 + step_percentage) / 100.0
+    sign = 1 if step_percentage > 0 else -1
+    return sign * (1 - np.sqrt(prop)) * np.sqrt(1000000 * area)
+
+
+def reverse_buffer(y, img, percentage=-25):
+    buffer_size = get_buffer_from_area(y["Area"].values[0])
+    y_init = buffer_polygon_in_meters(y, buffer_size)
+    return mask(y_init, img)[0]
+
+
 def mask(y, img):
-    extent = gpd.GeoDataFrame(
-        index=[0],
-        crs=y.crs,
-        geometry=[sg.box(*img.bounds)]
-    )
+    extent = gpd.GeoDataFrame(index=[0], crs=y.crs, geometry=[sg.box(*img.bounds)])
     y_extent = gpd.overlay(y, extent)
 
     # build the masks, one polygon at a time
@@ -108,7 +138,7 @@ def mask(y, img):
     if masks.shape[1] != img.meta["height"] or masks.shape[2] != img.meta["width"]:
         masks = masks[:, :img.meta["height"], :img.meta["width"]]
 
-    return masks, p
+    return masks, p, y_extent
 
 
 def preprocessor(img, y):
@@ -120,7 +150,9 @@ def preprocessor(img, y):
     y: geopandas data.frame used to create training data masks
     """
     x = img.read()
-    y, extreme_polys = mask(y, img)
+    y, extreme_polys, y_extent = mask(y, img)
+    y_init = reverse_buffer(y_extent, img)
+
     dist, signed_dist = sdt(y)
     extreme_hm = gaussian_convolve(x.shape[1:], np.vstack(extreme_polys))
     gradient = [inverse_gaussian_gradient(x).mean(axis=0)]
@@ -128,8 +160,9 @@ def preprocessor(img, y):
     mins = [z.min(0) for z in [dist, signed_dist]]
     meta = [maxes[1]] + mins + gradient
     meta = [(s - s.mean()) / s.std() for s in meta]
+    meta.append(y_init.squeeze())
 
-    y, meta = maxes[0][np.newaxis, ...], np.stack(meta)
+    y, meta = y[np.newaxis, ...], np.stack(meta)
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 

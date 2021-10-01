@@ -87,22 +87,31 @@ def sdt(y, dist_max=40):
     return dts, sdts
 
 
-def buffer_polygon_in_meters(polygon, buffer):
-    proj_meters = pyproj.Proj(init='epsg:3857')
-    proj_latlng = pyproj.Proj(init='epsg:4326')
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.75):
+    proj_meters = pyproj.Proj('epsg:3857')
+    proj_latlng = pyproj.Proj('epsg:4326')
 
     project_to_meters = partial(pyproj.transform, proj_latlng, proj_meters)
     project_to_latlng = partial(pyproj.transform, proj_meters, proj_latlng)
-    pt_meters = transform(project_to_meters, polygon.unary_union)
+    pt_meters = transform(project_to_meters, polygon)
 
-    buffer_meters = pt_meters.buffer(buffer)
-    buffered_poly = transform(project_to_latlng, buffer_meters)
-    return gpd.GeoDataFrame(geometry=[buffered_poly], crs=polygon.crs)
+    buffer_meters = pt_meters
+    while buffer_meters.area > percentage * pt_meters.area:
+        buffer_meters = buffer_meters.buffer(buffer)
+
+    buffer_polygon = transform(project_to_latlng, buffer_meters.buffer(0))
+    return gpd.GeoDataFrame(geometry=[buffer_polygon.convex_hull], crs=polygon.crs)
+
+
+def get_buffer_from_area(area, step_percentage=-1):
+    #Area in sq km
+    prop = (100 + step_percentage) / 100.0
+    sign = 1 if step_percentage > 0 else -1
+    return sign * (1 - np.sqrt(prop)) * np.sqrt(1000000 * area)
 
 
 def reverse_buffer(y, img, percentage=-25):
-    area = y["Area"].values[0]
-    buffer_size = np.sqrt(1000000 * area) / percentage # Area in sq km
+    buffer_size = get_buffer_from_area(y["Area"].values[0])
     y_init = buffer_polygon_in_meters(y, buffer_size)
     return mask(y_init, img)[0]
 

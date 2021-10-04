@@ -46,7 +46,7 @@ class UnetModel(BaseNetwork):
         self.downblocks = nn.ModuleList()
         self.upblocks = nn.ModuleList()
         self.pool = nn.MaxPool2d(2, 2)
-        self.in_channels = opts.input_channels + 1 * (opts.divergence)
+        self.in_channels = opts.input_channels + 1 * (opts.divergence) + 1 * (opts.historical)
         self.divergence = opts.divergence
         self.out_channels = opts.first_layer_filters
         self.net_depth = opts.net_depth
@@ -73,6 +73,8 @@ class UnetModel(BaseNetwork):
     def forward(self, x, meta=None):
         if self.divergence:
             x = torch.cat([meta[:, 3:4], x], dim=1)  # add divergence channel
+        if self.historical:
+            x = torch.cat([meta[:, 4:5], x], dim=1)  # add shrunken past label
 
         decoder_outputs = []
         for op in self.downblocks:

@@ -17,13 +17,15 @@ class DelseModel(nn.Module):
         self.dt_max = opts.dt_max
         self.delse_pth = opts.delse_pth
         self.divergence = opts.divergence
-        n_channels = opts.input_channels + 1 * (opts.divergence) + 1
+        n_channels = opts.input_channels + 1 * (opts.divergence) + 1 * (opts.historical) + 1
         self.full_model = backend_cnn_model(n_channels, "resnet101-skip-pretrain", opts.delse_pth)
 
     def forward(self, x, meta):
         x = torch.cat([meta[:, 0:1], x], dim=1)  # add extreme points labels
         if self.divergence:
             x = torch.cat([meta[:, 3:4], x], dim=1)  # add divergence channel
+        if self.historical:
+            x = torch.cat([meta[:, 4:5], x], dim=1)  # add historical channel
 
         outputs = self.full_model(x)
         phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]

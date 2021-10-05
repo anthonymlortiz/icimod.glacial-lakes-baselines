@@ -44,7 +44,7 @@ def get_sentinel_glid_from_fn(bing_fn):
     return gl_id
 
 
-def buffer_polygon_in_meters(polygon, buffer, percentage=0.75):
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.4):
     proj_meters = pyproj.Proj('epsg:3857')
     proj_latlng = pyproj.Proj('epsg:4326')
 

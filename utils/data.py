@@ -10,6 +10,7 @@ import shutil
 from scipy import ndimage as ndi
 from tqdm import tqdm
 from functools import partial
+from joblib import Parallel, delayed
 from shapely.ops import transform
 import pyproj
 from warnings import warn, filterwarnings
@@ -87,20 +88,20 @@ def sdt(y, dist_max=40):
     return dts, sdts
 
 
-def buffer_polygon_in_meters(polygon, buffer, percentage=0.75):
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.4):
     proj_meters = pyproj.Proj('epsg:3857')
     proj_latlng = pyproj.Proj('epsg:4326')
 
     project_to_meters = partial(pyproj.transform, proj_latlng, proj_meters)
     project_to_latlng = partial(pyproj.transform, proj_meters, proj_latlng)
-    pt_meters = transform(project_to_meters, polygon)
+    pt_meters = transform(project_to_meters, polygon.unary_union)
 
     buffer_meters = pt_meters
     while buffer_meters.area > percentage * pt_meters.area:
         buffer_meters = buffer_meters.buffer(buffer)
 
-    buffer_polygon = transform(project_to_latlng, buffer_meters.buffer(0))
-    return gpd.GeoDataFrame(geometry=[buffer_polygon.convex_hull], crs=polygon.crs)
+    buffer_polygon = transform(project_to_latlng, buffer_meters)
+    return gpd.GeoDataFrame(geometry=[buffer_polygon], crs=polygon.crs)
 
 
 def get_buffer_from_area(area, step_percentage=-1):
@@ -162,7 +163,8 @@ def preprocessor(img, y):
     meta = [(s - s.mean()) / s.std() for s in meta]
     meta.append(y_init.squeeze())
 
-    y, meta = y[np.newaxis, ...], np.stack(meta)
+    meta = np.stack(meta)
+    y = maxes[0][np.newaxis, ...]
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 
@@ -213,7 +215,19 @@ def eval_paths(infer_dir):
         "sample_id": [str(f.stem).replace("_pred", "") for f in fn]
     })
 
-def preprocess_dir(in_dir, y):
+
+def process_scene(scene, y, in_dir, stat_path):
+    img = rasterio.open(scene)
+    mean, std, label, meta = preprocessor(img, y)
+    save_raster(label, img.meta, img.transform, in_dir / f"labels/{scene.stem}-labels.tif")
+    save_raster(meta, img.meta, img.transform, in_dir / f"meta/{scene.stem}-meta.tif")
+
+    f = open(stat_path, "a")
+    writer = csv.writer(f)
+    writer.writerow([str(scene.stem)] + list(np.hstack([mean, std])))
+
+
+def preprocess_dir(in_dir, y, n_jobs=20):
     if (in_dir / "images").exists():
         shutil.rmtree(in_dir / "images")
         shutil.rmtree(in_dir / "labels")
@@ -223,17 +237,16 @@ def preprocess_dir(in_dir, y):
     scene_list = list(in_dir.glob("*.tif"))
     tmp = rasterio.open(scene_list[0]).read()
     fields = ["scene"] + sum([[f"{s}_{i}" for i in range(tmp.shape[0])] for s in ["mean", "sdev"]], [])
-    f = open(in_dir / "statistics.csv", "a")
+    stat_path = in_dir / "statistics.csv"
+    f = open(stat_path, "a")
     writer = csv.writer(f)
     writer.writerow(fields)
+    f.flush()
 
     print(f"preprocessing {in_dir}")
-    for scene in tqdm(scene_list):
-        img = rasterio.open(scene)
-        mean, std, label, meta = preprocessor(img, y)
-        save_raster(label, img.meta, img.transform, in_dir / f"labels/{scene.stem}-labels.tif")
-        save_raster(meta, img.meta, img.transform, in_dir / f"meta/{scene.stem}-meta.tif")
-        writer.writerow([str(scene.stem)] + list(np.hstack([mean, std])))
+    Parallel(n_jobs=n_jobs)(
+        delayed(process_scene)(fn, y, in_dir, stat_path) for fn in tqdm(scene_list)
+    )
 
     f.close()
     [shutil.move(str(s), in_dir / "images") for s in scene_list]

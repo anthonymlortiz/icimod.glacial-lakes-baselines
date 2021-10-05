@@ -48,6 +48,7 @@ class UnetModel(BaseNetwork):
         self.pool = nn.MaxPool2d(2, 2)
         self.in_channels = opts.input_channels + 1 * (opts.divergence) + 1 * (opts.historical)
         self.divergence = opts.divergence
+        self.historical = opts.historical
         self.out_channels = opts.first_layer_filters
         self.net_depth = opts.net_depth
         self.num_classes = opts.num_classes

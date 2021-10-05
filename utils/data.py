@@ -101,7 +101,7 @@ def buffer_polygon_in_meters(polygon, buffer, percentage=0.4):
         buffer_meters = buffer_meters.buffer(buffer)
 
     buffer_polygon = transform(project_to_latlng, buffer_meters)
-    return gpd.GeoDataFrame(geometry=[buffer_polygon.convex_hull], crs=polygon.crs)
+    return gpd.GeoDataFrame(geometry=[buffer_polygon], crs=polygon.crs)
 
 
 def get_buffer_from_area(area, step_percentage=-1):
@@ -164,6 +164,7 @@ def preprocessor(img, y):
     meta.append(y_init.squeeze())
 
     meta = np.stack(meta)
+    y = maxes[0][np.newaxis, ...]
     return np.nanmean(x, (1, 2)), np.nanstd(x, (1, 2)), y, meta
 
 
@@ -240,6 +241,7 @@ def preprocess_dir(in_dir, y, n_jobs=20):
     f = open(stat_path, "a")
     writer = csv.writer(f)
     writer.writerow(fields)
+    f.flush()
 
     print(f"preprocessing {in_dir}")
     Parallel(n_jobs=n_jobs)(

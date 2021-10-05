@@ -17,6 +17,7 @@ class DelseModel(nn.Module):
         self.dt_max = opts.dt_max
         self.delse_pth = opts.delse_pth
         self.divergence = opts.divergence
+        self.historical = opts.historical
         n_channels = opts.input_channels + 1 * (opts.divergence) + 1 * (opts.historical) + 1
         self.full_model = backend_cnn_model(n_channels, "resnet101-skip-pretrain", opts.delse_pth)
 

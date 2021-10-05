@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
-from utils import lse
+from utils import lse, data
 
 affine_par = True
 
@@ -18,19 +18,23 @@ class DelseModel(nn.Module):
         self.delse_pth = opts.delse_pth
         self.divergence = opts.divergence
         self.historical = opts.historical
-        n_channels = opts.input_channels + 1 * (opts.divergence) + 1 * (opts.historical) + 1
-        self.full_model = backend_cnn_model(n_channels, "resnet101-skip-pretrain", opts.delse_pth)
+        n_channels = opts.input_channels + 1 + 1 * (opts.divergence) + 1 * (opts.historical)
+        flag = "resnet101-skip-pretrain" if self.historical else "resnet101-skip-pretrain-shrunken"
+        self.full_model = backend_cnn_model(n_channels, flag, opts.delse_pth)
 
     def forward(self, x, meta):
         x = torch.cat([meta[:, 0:1], x], dim=1)  # add extreme points labels
         if self.divergence:
             x = torch.cat([meta[:, 3:4], x], dim=1)  # add divergence channel
-        if self.historical:
-            x = torch.cat([meta[:, 4:5], x], dim=1)  # add historical channel
 
-        outputs = self.full_model(x)
-        phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
-        return phi_0, energy, torch.sigmoid(g)
+        if not self.historical:
+            outputs = self.full_model(x)
+            phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
+        else:
+            x = torch.cat([meta[:, 4:5], x], dim=1) # add historical channel
+            dt, phi_0 = data.sdt(meta[:, 4:5].cpu().numpy())
+            outputs = self.full_model(x)
+            energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
 
     def infer(self, x, meta, threshold=0.4):
         with torch.no_grad():
@@ -464,6 +468,10 @@ def backend_cnn_model(input_channels, model_type="resnet101-skip-pretrain", dels
                                    classifier=classifier, layers=(3, 4, 6, 3), delse_pth=delse_pth)
     elif model_type == 'resnet101-skip-pretrain':
         resnet = build_resnet_model(n_classes=(1, 2, 1), pretrained=True, nInputChannels=input_channels,
+                                    classifier=classifier, feature_dim=4*concat_dim, delse_pth=delse_pth)
+        model = SkipResnet(concat_channels=concat_dim, resnet=resnet)
+    elif model_type == 'resnet101-skip-pretrain-shrunken':
+        resnet = build_resnet_model(n_classes=(2, 1), pretrained=True, nInputChannels=input_channels,
                                     classifier=classifier, feature_dim=4*concat_dim, delse_pth=delse_pth)
         model = SkipResnet(concat_channels=concat_dim, resnet=resnet)
     elif model_type == 'resnet101-pretrain':

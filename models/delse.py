@@ -19,7 +19,7 @@ class DelseModel(nn.Module):
         self.divergence = opts.divergence
         self.historical = opts.historical
         n_channels = opts.input_channels + 1 + 1 * (opts.divergence) + 1 * (opts.historical)
-        flag = "resnet101-skip-pretrain" if self.historical else "resnet101-skip-pretrain-shrunken"
+        flag = "resnet101-skip-pretrain-shrunken" if self.historical else "resnet101-skip-pretrain"
         self.full_model = backend_cnn_model(n_channels, flag, opts.delse_pth)
 
     def forward(self, x, meta):
@@ -31,10 +31,12 @@ class DelseModel(nn.Module):
             outputs = self.full_model(x)
             phi_0, energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
         else:
-            x = torch.cat([meta[:, 4:5], x], dim=1) # add historical channel
-            dt, phi_0 = data.sdt(meta[:, 4:5].cpu().numpy())
+            x = torch.cat([meta[:, 4:5], x], dim=1) # historical channel
+            _, phi_0 = data.sdt(meta[:, 4:5].cpu().numpy())
+            phi_0 = torch.Tensor(phi_0).to(x.device) # use true historical SDT
             outputs = self.full_model(x)
             energy, g = [lse.interpolater(z, x.shape[2:4]) for z in outputs]
+        return phi_0, energy, g
 
     def infer(self, x, meta, threshold=0.4):
         with torch.no_grad():

@@ -10,7 +10,7 @@ import numpy as np
 from models import snake
 from utils import utils
 import fiona
-from shapely.geometry import Polygon, mapping, Point
+from shapely.geometry import Polygon
 from functools import partial
 from shapely.ops import transform
 import pyproj
@@ -29,6 +29,7 @@ parser.add_argument('--image_source', default='bing', const='sentinel',
 parser.add_argument('--verbose', action="store_true",  help='Print details of inference')
 parser.add_argument('--gl_filename', default='/datadrive/snake/lakes/GL_3basins_2015.shp', type=str, help='The path to the glacial lakes vector data filename')
 parser.add_argument('--n_jobs', type=int, default=100, help='How many processes to run in parallel?')
+parser.add_argument('--evolution_store_frequency', type=int, default=10, help='After how many snake iterations should the evolution be saved?')
 
 args = parser.parse_args()
 
@@ -51,14 +52,13 @@ def buffer_polygon_in_meters(polygon, buffer, percentage=0.4):
     project_to_meters = partial(pyproj.transform, proj_latlng, proj_meters)
     project_to_latlng = partial(pyproj.transform, proj_meters, proj_latlng)
 
-
     pt_meters = transform(project_to_meters, polygon)
-
     buffer_meters = pt_meters
+
     while buffer_meters.area > percentage * pt_meters.area:
         buffer_meters = buffer_meters.buffer(buffer)
-
     buffer_polygon = transform(project_to_latlng, buffer_meters.buffer(0))
+
     return buffer_polygon.convex_hull
 
 
@@ -104,7 +104,10 @@ def process_input(input_fn):
         for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
             py, px = f.index(lon, lat)
             xy_buffered_polygon.append((px, py))
-        snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=250)
+        if args.image_source == "sentinel":
+            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=100)
+        else:
+            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=250)
 
         #-------------------
         # Save output
@@ -123,7 +126,7 @@ def process_input(input_fn):
                 })
 
             output_fn_npz = output_fn.replace('.tif', '.npy')
-            np.save(output_fn_npz, np.asarray(evolution))
+            np.save(output_fn_npz, np.asarray(evolution)[::args.evolution_store_frequency])
 
 
 def main():

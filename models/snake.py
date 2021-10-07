@@ -325,6 +325,14 @@ def level_set_from_polygon(shape, xy_polygon):
     return img
 
 
+def level_set_from_multi_polygons(shape, xy_polygons):
+    img = np.zeros(shape, 'uint8')
+    for poly in xy_polygons:
+        rr, cc = polygon([a_tuple[1] for a_tuple in poly], [a_tuple[0] for a_tuple in poly], img.shape)
+        img[rr,cc] = 1
+    return img
+
+
 def ellipsoid_level_set(image_shape, center=None, semi_axis=None):
     """Create a ellipsoid level set with binary values.
     Parameters
@@ -565,10 +573,8 @@ def snake_lakes_GAC_from_polygon(x, polygon, iterations=300, igs_alpha=100, igs_
     imgcolor = x/256.
     img = rgb2gray(imgcolor)
 
-
     gimg = inverse_gaussian_gradient(img, alpha=igs_alpha, sigma=igs_sigma)
     
-
     # Initialization of the level-set.
     init_ls = level_set_from_polygon(img.shape, polygon)
 

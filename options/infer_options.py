@@ -12,6 +12,7 @@ class InferOptions(BaseOptions):
         parser.add_argument('--divergence', default=False, action='store_true', help='Add divergence feature?')
         parser.add_argument('--model_pth', type=str, default='/datadrive/results/backup/sentinel-unet_best.pth', help='Absolute path to model')
         parser.add_argument('--chip_size', type=int, default=1024, help='Model input / output chip dimension')
+        parser.add_argument('--historical', default=False, action='store_true', help='Add shrunken historical label?')
         return parser
 
 

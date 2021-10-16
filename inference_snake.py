@@ -45,7 +45,7 @@ def get_sentinel_glid_from_fn(bing_fn):
     return gl_id
 
 
-def buffer_polygon_in_meters(polygon, buffer, percentage=0.4):
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.25):
     proj_meters = pyproj.Proj('epsg:3857')
     proj_latlng = pyproj.Proj('epsg:4326')
 
@@ -59,7 +59,7 @@ def buffer_polygon_in_meters(polygon, buffer, percentage=0.4):
         buffer_meters = buffer_meters.buffer(buffer)
     buffer_polygon = transform(project_to_latlng, buffer_meters.buffer(0))
 
-    return buffer_polygon.convex_hull
+    return buffer_polygon
 
 
 def get_glacial_lake_2015_outline_from_glid(lakes_shapefile_2015, glid):
@@ -100,14 +100,28 @@ def process_input(input_fn):
         area, polygon = get_glacial_lake_2015_outline_from_glid(args.gl_filename, gl_id)
         buffer_size = get_buffer_from_area(area)
         buffered_polygon = buffer_polygon_in_meters(polygon, buffer_size)
-        xy_buffered_polygon = []
-        for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
-            py, px = f.index(lon, lat)
-            xy_buffered_polygon.append((px, py))
-        if args.image_source == "sentinel":
-            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=100)
+        if buffered_polygon.geom_type == 'MultiPolygon':
+            polygons = list(buffered_polygon)
+            xy_polygons = []
+            for polygon in polygons:
+                xy_buffered_polygon = []
+                for i, (lon, lat) in enumerate(polygon.exterior.coords):
+                    py, px = f.index(lon, lat)
+                    xy_buffered_polygon.append((px, py))
+                xy_polygons.append(xy_buffered_polygon)
+            if args.image_source == "sentinel":
+                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=100)
+            else:
+                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=250)
         else:
-            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=250)
+            xy_buffered_polygon = []
+            for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
+                py, px = f.index(lon, lat)
+                xy_buffered_polygon.append((px, py))
+            if args.image_source == "sentinel":
+                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=100)
+            else:
+                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=250)
 
         #-------------------
         # Save output

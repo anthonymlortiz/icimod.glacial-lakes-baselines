@@ -325,7 +325,7 @@ def level_set_from_polygon(shape, xy_polygon):
     return img
 
 
-def level_set_from_multi_polygons(shape, xy_polygons):
+def level_set_from_multipolygon(shape, xy_polygons):
     img = np.zeros(shape, 'uint8')
     for poly in xy_polygons:
         rr, cc = polygon([a_tuple[1] for a_tuple in poly], [a_tuple[0] for a_tuple in poly], img.shape)
@@ -577,6 +577,27 @@ def snake_lakes_GAC_from_polygon(x, polygon, iterations=300, igs_alpha=100, igs_
     
     # Initialization of the level-set.
     init_ls = level_set_from_polygon(img.shape, polygon)
+
+    # Callback for visual plotting
+    evolution = []
+    callback = store_evolution_in(evolution)
+    # Morphological GAC
+    return morphological_geodesic_active_contour(gimg, iterations=iterations,
+                                      init_level_set=init_ls,
+                               smoothing=2, threshold='auto',
+                                balloon=1, iter_callback=callback
+                              ).astype(np.uint8), evolution
+
+
+def snake_lakes_GAC_from_multipolygon(x, multipolygon, iterations=300, igs_alpha=100, igs_sigma=2.25):
+    # Load the image.
+    imgcolor = x/256.
+    img = rgb2gray(imgcolor)
+
+    gimg = inverse_gaussian_gradient(img, alpha=igs_alpha, sigma=igs_sigma)
+    
+    # Initialization of the level-set.
+    init_ls = level_set_from_multipolygon(img.shape, multipolygon)
 
     # Callback for visual plotting
     evolution = []

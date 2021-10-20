@@ -249,8 +249,8 @@ def polygonize_preds(y_hat, crop_region, tol=25e-5):
 
 
 def polygon_metrics(y_hat, y, context, metrics={"IoU": mt.IoU}):
-    y_, _ = mask(y, context)
-    y_hat_, _ = mask(y_hat, context)
+    y_, _, _ = mask(y, context)
+    y_hat_, _, _ = mask(y_hat, context)
 
     y_ = y_.sum(axis=0, keepdims=True)
     y_hat_ = y_hat_.sum(axis=0, keepdims=True)

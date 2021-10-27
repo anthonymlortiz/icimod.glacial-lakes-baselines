@@ -4,6 +4,7 @@ import geopandas as gpd
 import pandas as pd
 import numpy as np
 import rasterio
+from joblib import Parallel, delayed
 from tqdm import tqdm
 import utils.data as dt
 import utils.metrics as mt
@@ -31,12 +32,14 @@ metrics = {
 }
 m = []
 
-for i, (path, sample_id) in tqdm(eval_paths.iterrows(), total=len(eval_paths)):
+def process_input(index):
+    path, sample_id = eval_paths.loc[index]
     gl_id = sample_id.split("_")[0]
     y_reader = rasterio.open(path)
     y_hat = y_reader.read()
 
     # polygonized predictions for each probability
+    m = []
     for p in probs:
         y_hat_poly = mu.polygonize_preds(
             y_hat, y_reader,
@@ -55,9 +58,12 @@ for i, (path, sample_id) in tqdm(eval_paths.iterrows(), total=len(eval_paths)):
             y_reader,
             metrics=metrics
         )
-        results["GL_ID"] = gl_id
         results["prob"] = p
+        results["GL_ID"] = gl_id
         results["sample_id"] = sample_id
         m.append(results)
+    return pd.DataFrame(m)
 
-pd.DataFrame(m).to_csv(save_dir / "metrics.csv", index=False)
+
+m = Parallel(n_jobs=opts.n_jobs)(delayed(process_input)(fn) for fn in tqdm(eval_paths.index))
+pd.concat(m).to_csv(save_dir / "metrics.csv", index=False)

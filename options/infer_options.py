@@ -24,4 +24,6 @@ class EvalOptions(BaseOptions):
         parser.add_argument("--vector_label", type=str, default="/datadrive/snake/lakes/GL_3basins_2015.shp")
         parser.add_argument("--buffer", type=float, default=1e-2)
         parser.add_argument("--tol", type=float, default=1e-6)
+        parser.add_argument("--grid", type=int, default=1)
+        parser.add_argument("--geo_prob", type=str, default=0.6)
         return parser

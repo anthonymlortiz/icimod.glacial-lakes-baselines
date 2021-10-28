@@ -234,15 +234,16 @@ def polygonize_preds(y_hat, y_reader, crop_region, threshold=0.6, tol=25e-5):
     # get features from probability and overlay onto crop region
     ft = list(rf.dataset_features(blur_thresholded(y_hat, y_reader, threshold), as_mask=True))
     ft = gpd.GeoDataFrame.from_features(ft)
+
+    crop_region = gpd.GeoDataFrame(geometry=[crop_region])
+    centroid = gpd.GeoDataFrame(geometry=[box(*crop_region.bounds).centroid])
+
+    # if no polygon, just return the center of the prediction region
     if len(ft) == 0:
         return centroid
 
-    crop_region = gpd.GeoDataFrame(geometry=[crop_region])
     result = gpd.overlay(ft, crop_region).simplify(tolerance=tol)
-
-    # if no polygon, just return the center of the prediction region
     if len(result) == 0:
-        centroid = gpd.GeoDataFrame(geometry=[box(*crop_region.bounds).centroid])
         return centroid
     return gpd.GeoDataFrame(geometry=result)
 

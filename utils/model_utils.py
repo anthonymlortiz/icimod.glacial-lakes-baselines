@@ -223,16 +223,15 @@ def processor_chip(device):
     return f
 
 
-def blur_thresholded(x, reader, threshold=0.6, sigma=2):
-    blurred = gaussian_filter(x, sigma=sigma)
+def binarized(x, reader, threshold=0.6):
     f = tempfile.NamedTemporaryFile()
-    save_raster(blurred > threshold, reader.meta, reader.transform, Path(f.name))
+    save_raster((1. * x) > threshold, reader.meta, reader.transform, Path(f.name))
     return rasterio.open(Path(f.name))
 
 
 def polygonize_preds(y_hat, y_reader, crop_region, threshold=0.6, tol=25e-5):
     # get features from probability and overlay onto crop region
-    ft = list(rf.dataset_features(blur_thresholded(y_hat, y_reader, threshold), as_mask=True))
+    ft = list(rf.dataset_features(binarized(y_hat, y_reader, threshold), as_mask=True))
     ft = gpd.GeoDataFrame.from_features(ft)
 
     # if no polygon, just return the center of the prediction region

@@ -36,7 +36,7 @@ def process_input(index):
     path, sample_id = eval_paths.loc[index]
     gl_id = sample_id.split("_")[0]
     y_reader = rasterio.open(path)
-    y_hat = y_reader.read()
+    y_hat = y_reader.read().astype(np.float32)
 
     # polygonized predictions for each probability
     m = []
@@ -63,7 +63,6 @@ def process_input(index):
         results["sample_id"] = sample_id
         m.append(results)
     return pd.DataFrame(m)
-
 
 m = Parallel(n_jobs=opts.n_jobs)(delayed(process_input)(fn) for fn in tqdm(eval_paths.index))
 pd.concat(m).to_csv(save_dir / "metrics.csv", index=False)

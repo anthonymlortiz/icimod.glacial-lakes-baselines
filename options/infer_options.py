@@ -27,4 +27,5 @@ class EvalOptions(BaseOptions):
         parser.add_argument("--grid", type=int, default=50)
         parser.add_argument("--geo_prob", type=float, default=0.6)
         parser.add_argument("--n_jobs", type=int, default=50)
+        parser.add_argument("--mode", type=str, default="pred")
         return parser

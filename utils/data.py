@@ -208,11 +208,19 @@ def inference_paths(x_dir, meta_dir, infer_dir, subset_size=None):
     return result
 
 
-def eval_paths(infer_dir, mode = "pred"):
-    fn = list(pathlib.Path(infer_dir).glob(f"*_{mode}.tif"))
+def list_ids(source_dir):
+    fn = list(pathlib.Path(source_dir).glob("**/*tif"))
     return pd.DataFrame({
         "path": fn,
-        "sample_id": [str(f.stem).replace(f"_{mode}", "") for f in fn]
+        "sample_id": [str(f.stem) for f in fn]
+    })
+
+
+def eval_paths(ids, inference_dir, mode="pred"):
+    fn = [pathlib.Path(inference_dir) / f"{s}_{mode}.tif" for s in ids]
+    return pd.DataFrame({
+        "path": fn,
+        "sample_id": ids
     })
 
 

@@ -29,3 +29,13 @@ class EvalOptions(BaseOptions):
         parser.add_argument("--eval_paths", type=str, default="/datadrive/results/inference/bing_val_paths.csv")
         parser.add_argument("--fname", type=str, default="metrics.csv")
         return parser
+
+
+class PathOptions(BaseOptions):
+    def initialize(self, parser):
+        BaseOptions.initialize(self, parser)
+        parser.add_argument("--image_dir", type = str, default="/datadrive/glaciers/bing_glaciers/processed/bing/", help="What directory contains full set of images to give predictions for?")
+        parser.add_argument("--inference_dir", type = str, default="/datadrive/results/inference/compressed/results/bing-unet/", help="Where are the predictions stored?")
+        parser.add_argument("--output_dir", type = str, default="/datadrive/results/inference/eval_paths/", help="Where to save the validation paths?")
+        parser.add_argument("--labeling_dir", type = str, default="/datadrive/glaciers/bing_glaciers/labeling/", help="What directory contains subset of images with recent imagery?")
+        return parser

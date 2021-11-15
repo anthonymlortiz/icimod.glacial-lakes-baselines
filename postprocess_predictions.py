@@ -31,17 +31,22 @@ args = parser.parse_args()
 
 
 def process_input(input_fn, prediction_fn):
-    output_fn = args.output_dir + str(os.path.basename(input_fn)).replace(".tif", "_postprocessed.tif")
+    output_fn = args.output_dir + str(os.path.basename(input_fn)).replace(".tif", "_postprocessed_pred.tif")
     with utils.Timer("loading input", args.verbose):
         with rasterio.open(input_fn) as f:
             input_profile = f.profile.copy()
             img_data = np.moveaxis(f.read(), 0, -1)
 
         if args.image_source == "bing":
-            xy_polygons = snake_utils.polygonize_raster(prediction_fn, border_pixels=80)
+            xy_polygons, is_multipolygon = snake_utils.polygonize_raster_and_buffer(prediction_fn, border_pixels=80)
         else:
-            xy_polygons = snake_utils.polygonize_raster(prediction_fn)
-        snake_results, _ = snake.snake_lakes_GAC_from_polygon(img_data, xy_polygons, iterations=20)
+            xy_polygons, is_multipolygon = snake_utils.polygonize_raster_and_buffer(prediction_fn)
+
+        if is_multipolygon:
+            snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=60)
+        else:
+            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_polygons, iterations=60)
+
 
         #-------------------
         # Save output
@@ -51,9 +56,11 @@ def process_input(input_fn, prediction_fn):
             output_profile["dtype"] = "uint8"
             output_profile["count"] = 1
             output_profile["nodata"] = 0
+            print("got here")
 
             with rasterio.open(output_fn, "w", **output_profile) as f:
-                f.write(snake_results, 1)
+                print("got here")
+                f.write(evolution[-1], 1)
                 f.write_colormap(1, {
                     0: (0, 0, 0, 0),
                     1: (255, 0, 0, 255)
@@ -80,6 +87,8 @@ def main():
             return
 
     filenames = glob.glob(args.input_dir +"*.tif")
+    #for fn in tqdm(filenames):
+    #    process_input(fn, args.predictions_dir + str(os.path.basename(fn)).replace(".tif", "_pred.tif") )
     Parallel(n_jobs=args.n_jobs)(delayed(process_input)(fn, args.predictions_dir + str(os.path.basename(fn)).replace(".tif", "_pred.tif")) for fn in tqdm(filenames))
 
 

@@ -62,7 +62,7 @@ def process_input(input_fn):
                     xy_buffered_polygon.append((px, py))
                 xy_polygons.append(xy_buffered_polygon)
             if args.image_source == "sentinel":
-                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=100)
+                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=150)
             else:
                 snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=250)
         else:

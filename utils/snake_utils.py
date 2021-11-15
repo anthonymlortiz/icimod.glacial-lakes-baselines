@@ -18,7 +18,7 @@ from utils import data
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def buffer_polygon_in_meters(polygon, buffer, percentage=0.25):
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.8):
     proj_meters = pyproj.Proj('epsg:3857')
     proj_latlng = pyproj.Proj('epsg:4326')
 
@@ -72,7 +72,6 @@ def polygonize_raster_and_buffer(raster_fn, border_pixels=20):
     xy_polygons = []
     for geom in geoms:
         poly = shape(geom['geometry'])
-        xy_buffered_polygon = []
         proj_meters = pyproj.Proj('epsg:3857')
         proj_latlng = pyproj.Proj('epsg:4326')
 
@@ -81,9 +80,22 @@ def polygonize_raster_and_buffer(raster_fn, border_pixels=20):
         area = pt_meters.area/1000000
 
         buffer_size = data.get_buffer_from_area(area)
-        buffered_polygon = buffer_polygon_in_meters(poly, buffer_size, percentage=.6)
-        for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
-            py, px = src.index(lon, lat)
-            xy_buffered_polygon.append((px, py))
-        xy_polygons.append(xy_buffered_polygon)
-    return xy_polygons
+        buffered_polygon = buffer_polygon_in_meters(poly, buffer_size, percentage=.4)
+
+        if buffered_polygon.geom_type == 'MultiPolygon':
+            polygons = list(buffered_polygon)
+            xy_polygons = []
+            for poly in polygons:
+                xy_buffered_polygon = []
+                for i, (lon, lat) in enumerate(poly.exterior.coords):
+                    py, px = src.index(lon, lat)
+                    xy_buffered_polygon.append((px, py))
+                xy_polygons.append(xy_buffered_polygon)
+            return xy_polygons, True
+        else:
+            xy_polygon = []
+            for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
+                py, px = src.index(lon, lat)
+                xy_polygon.append((px, py))
+
+            return xy_polygon, False

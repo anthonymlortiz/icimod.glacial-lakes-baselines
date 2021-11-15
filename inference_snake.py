@@ -51,7 +51,7 @@ def process_input(input_fn):
 
         area, polygon = snake_utils.get_glacial_lake_2015_outline_from_glid(args.gl_filename, gl_id)
         buffer_size = data.get_buffer_from_area(area)
-        buffered_polygon = snake_utils.buffer_polygon_in_meters(polygon, buffer_size)
+        buffered_polygon = snake_utils.buffer_polygon_in_meters(polygon, buffer_size, 0.5)
         if buffered_polygon.geom_type == 'MultiPolygon':
             polygons = list(buffered_polygon)
             xy_polygons = []
@@ -62,18 +62,18 @@ def process_input(input_fn):
                     xy_buffered_polygon.append((px, py))
                 xy_polygons.append(xy_buffered_polygon)
             if args.image_source == "sentinel":
-                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=150)
+                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=50)
             else:
-                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=250)
+                snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=150)
         else:
             xy_buffered_polygon = []
             for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
                 py, px = f.index(lon, lat)
                 xy_buffered_polygon.append((px, py))
             if args.image_source == "sentinel":
-                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=100)
+                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=50)
             else:
-                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=250)
+                snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_buffered_polygon, iterations=150)
 
         #-------------------
         # Save output

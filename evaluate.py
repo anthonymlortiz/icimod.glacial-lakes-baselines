@@ -16,7 +16,7 @@ opts = EvalOptions().parse()
 save_dir = Path(opts.save_dir)
 save_dir.mkdir(parents=True, exist_ok=True)
 eval_paths = dt.eval_paths(opts.inference_dir, opts.mode)
-probs = [0.6] if opts.grid == 1 else np.arange(0, 1, 1 / opts.grid)
+probs = [0.6] # if opts.grid == 1 else np.arange(0, 1, 1 / opts.grid)
 
 # read in the true labels, but get a buffer
 vector_label = gpd.read_file(opts.vector_label)

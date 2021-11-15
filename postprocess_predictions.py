@@ -43,9 +43,9 @@ def process_input(input_fn, prediction_fn):
             xy_polygons, is_multipolygon = snake_utils.polygonize_raster_and_buffer(prediction_fn)
 
         if is_multipolygon:
-            snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=60)
+            snake_results, evolution = snake.snake_lakes_GAC_from_multipolygon(img_data, xy_polygons, iterations=120)
         else:
-            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_polygons, iterations=60)
+            snake_results, evolution = snake.snake_lakes_GAC_from_polygon(img_data, xy_polygons, iterations=120)
 
 
         #-------------------
@@ -56,10 +56,8 @@ def process_input(input_fn, prediction_fn):
             output_profile["dtype"] = "uint8"
             output_profile["count"] = 1
             output_profile["nodata"] = 0
-            print("got here")
 
             with rasterio.open(output_fn, "w", **output_profile) as f:
-                print("got here")
                 f.write(evolution[-1], 1)
                 f.write_colormap(1, {
                     0: (0, 0, 0, 0),

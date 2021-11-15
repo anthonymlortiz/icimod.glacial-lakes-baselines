@@ -223,26 +223,24 @@ def processor_chip(device):
     return f
 
 
-def blur_raster(x, sigma=2, threshold=0.5):
-    blurred = gaussian_filter(x.read(), sigma=sigma)
+def binarized(x, reader, threshold=0.6):
     f = tempfile.NamedTemporaryFile()
-    save_raster(blurred > threshold, x.meta, x.transform, Path(f.name))
+    save_raster((1. * x) > threshold, reader.meta, reader.transform, Path(f.name))
     return rasterio.open(Path(f.name))
 
 
-def polygonize_preds(y_hat, crop_region, tol=25e-5):
-    # if no polygon, just return the center of the prediction region
-    centroid = gpd.GeoDataFrame(geometry=[box(*y_hat.bounds).centroid])
-
+def polygonize_preds(y_hat, y_reader, crop_region, threshold=0.6, tol=25e-5):
     # get features from probability and overlay onto crop region
-    ft = list(rf.dataset_features(blur_raster(y_hat), as_mask=True))
+    ft = list(rf.dataset_features(binarized(y_hat, y_reader, threshold), as_mask=True))
     ft = gpd.GeoDataFrame.from_features(ft)
+
+    # if no polygon, just return the center of the prediction region
+    centroid = gpd.GeoDataFrame(geometry=[box(*crop_region.bounds).centroid])
     if len(ft) == 0:
         return centroid
 
     crop_region = gpd.GeoDataFrame(geometry=[crop_region])
     result = gpd.overlay(ft, crop_region).simplify(tolerance=tol)
-
     if len(result) == 0:
         return centroid
     return gpd.GeoDataFrame(geometry=result)

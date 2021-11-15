@@ -80,7 +80,7 @@ def log_epoch(writer, epoch, metrics, save=1):
 
 def save_if_needed(algorithm, metrics, best_val, epoch, opts):
     cur_val = metrics["val"]["avg"][opts.val_metric]
-    if best_val is None or cur_val < best_val:
+    if best_val is None or cur_val > best_val:
         best_val = cur_val
         algorithm.save()
     elif epoch % opts.save_epoch == 0:

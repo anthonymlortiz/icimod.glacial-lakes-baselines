@@ -23,7 +23,7 @@ class EvalOptions(BaseOptions):
         parser.add_argument("--vector_label", type=str, default="/datadrive/snake/lakes/GL_3basins_2015.shp")
         parser.add_argument("--buffer", type=float, default=1e-2)
         parser.add_argument("--tol", type=float, default=1e-6)
-        parser.add_argument("--grid", type=int, default=50)
+        parser.add_argument("--grid", type=int, default=20)
         parser.add_argument("--geo_prob", type=float, default=0.6)
         parser.add_argument("--n_jobs", type=int, default=50)
         parser.add_argument("--eval_paths", type=str, default="/datadrive/results/inference/bing_val_paths.csv")
@@ -38,4 +38,5 @@ class PathOptions(BaseOptions):
         parser.add_argument("--inference_dir", type = str, default="/datadrive/results/inference/compressed/results/bing-unet/", help="Where are the predictions stored?")
         parser.add_argument("--output_dir", type = str, default="/datadrive/results/inference/eval_paths/", help="Where to save the validation paths?")
         parser.add_argument("--labeling_dir", type = str, default="/datadrive/glaciers/bing_glaciers/labeling/", help="What directory contains subset of images with recent imagery?")
+        parser.add_argument("--mode", type=str, default="pred")
         return parser

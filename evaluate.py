@@ -15,8 +15,8 @@ filterwarnings("ignore", category=UserWarning)
 opts = EvalOptions().parse()
 save_dir = Path(opts.save_dir)
 save_dir.mkdir(parents=True, exist_ok=True)
-eval_paths = dt.eval_paths(opts.inference_dir, opts.mode)
-probs = [0.6] # if opts.grid == 1 else np.arange(0, 1, 1 / opts.grid)
+eval_paths = pd.read_csv(opts.eval_paths)
+probs = [0.6] if opts.grid == 1 else np.arange(0, 1, 1 / opts.grid)
 
 # read in the true labels, but get a buffer
 vector_label = gpd.read_file(opts.vector_label)
@@ -65,4 +65,4 @@ def process_input(index):
     return pd.DataFrame(m)
 
 m = Parallel(n_jobs=opts.n_jobs)(delayed(process_input)(fn) for fn in tqdm(eval_paths.index))
-pd.concat(m).to_csv(save_dir / "metrics.csv", index=False)
+pd.concat(m).to_csv(save_dir / opts.fname, index=False)

@@ -18,7 +18,7 @@ from utils import data
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def buffer_polygon_in_meters(polygon, buffer, percentage=0.25):
+def buffer_polygon_in_meters(polygon, buffer, percentage=0.8):
     proj_meters = pyproj.Proj('epsg:3857')
     proj_latlng = pyproj.Proj('epsg:4326')
 
@@ -70,20 +70,36 @@ def polygonize_raster_and_buffer(raster_fn, border_pixels=20):
     geometries = list(results)
     geoms = [geom for geom in geometries if geom['properties']['raster_val'] == 1]
     xy_polygons = []
+    count = 0
+    is_multi = False
     for geom in geoms:
         poly = shape(geom['geometry'])
-        xy_buffered_polygon = []
         proj_meters = pyproj.Proj('epsg:3857')
         proj_latlng = pyproj.Proj('epsg:4326')
 
         project_to_meters = partial(pyproj.transform, proj_latlng, proj_meters)
         pt_meters = transform(project_to_meters, poly)
         area = pt_meters.area/1000000
-
+        if area < 0.05:
+            continue
         buffer_size = data.get_buffer_from_area(area)
-        buffered_polygon = buffer_polygon_in_meters(poly, buffer_size, percentage=.6)
-        for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
-            py, px = src.index(lon, lat)
-            xy_buffered_polygon.append((px, py))
-        xy_polygons.append(xy_buffered_polygon)
-    return xy_polygons
+        buffered_polygon = buffer_polygon_in_meters(poly, buffer_size, percentage=.5)
+
+        if buffered_polygon.geom_type == 'MultiPolygon':
+            polygons = list(buffered_polygon)
+            for poly in polygons:
+                xy_buffered_polygon = []
+                for i, (lon, lat) in enumerate(poly.exterior.coords):
+                    py, px = src.index(lon, lat)
+                    xy_buffered_polygon.append((px, py))
+                xy_polygons.append(xy_buffered_polygon)
+                count+=1
+        else:
+            for i, (lon, lat) in enumerate(buffered_polygon.exterior.coords):
+                py, px = src.index(lon, lat)
+                xy_polygons.append((px, py))
+            count+=1
+        if count > 1:
+            is_multi = True
+
+    return xy_polygons, is_multi

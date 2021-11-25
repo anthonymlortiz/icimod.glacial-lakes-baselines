@@ -41,6 +41,9 @@ def process_input(index):
     # polygonized predictions for each probability
     m = []
     for p in probs:
+        if not gl_id in vector_label.index:
+            continue
+
         y_hat_poly = mu.polygonize_preds(
             y_hat, y_reader,
             buffer.loc[gl_id],
@@ -62,6 +65,7 @@ def process_input(index):
         results["GL_ID"] = gl_id
         results["sample_id"] = sample_id
         m.append(results)
+
     return pd.DataFrame(m)
 
 m = Parallel(n_jobs=opts.n_jobs)(delayed(process_input)(fn) for fn in tqdm(eval_paths.index))

@@ -24,8 +24,6 @@ sys.path.append("..")
 from data.dataloader import image_transforms
 from scipy.ndimage import gaussian_filter
 import fiona
-from shapely.geometry import box
-from shapely.geometry import Polygon
 
 class LocalContextNorm(nn.Module):
     def __init__(self, num_features, channels_per_group=2, window_size=(227, 227), eps=1e-5):

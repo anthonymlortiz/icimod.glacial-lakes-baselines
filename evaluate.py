@@ -15,7 +15,6 @@ filterwarnings("ignore", category=UserWarning)
 opts = EvalOptions().parse()
 save_dir = Path(opts.save_dir)
 save_dir.mkdir(parents=True, exist_ok=True)
-eval_paths = pd.read_csv(opts.eval_paths)
 probs = [0.6] if opts.grid == 1 else np.arange(0, 1, 1 / opts.grid)
 
 # read in the true labels, but get a buffer
@@ -32,9 +31,8 @@ metrics = {
 }
 m = []
 
-def process_input(index):
-    path, sample_id = eval_paths.loc[index]
-    gl_id = sample_id.split("_")[0]
+def process_input(path):
+    gl_id = path.stem.split("_")[0]
     y_reader = rasterio.open(path)
     y_hat = y_reader.read().astype(np.float32)
 
@@ -52,7 +50,7 @@ def process_input(index):
         )
 
         if np.isclose(p, opts.geo_prob):
-            y_hat_poly.to_file(save_dir / f"{sample_id}.geojson", driver="GeoJSON")
+            y_hat_poly.to_file(save_dir / f"{path.stem}.geojson", driver="GeoJSON")
 
         # get metrics for these predictions
         results = mu.polygon_metrics(
@@ -63,10 +61,11 @@ def process_input(index):
         )
         results["prob"] = p
         results["GL_ID"] = gl_id
-        results["sample_id"] = sample_id
+        results["sample_id"] = path.stem
         m.append(results)
 
     return pd.DataFrame(m)
 
-m = Parallel(n_jobs=opts.n_jobs)(delayed(process_input)(fn) for fn in tqdm(eval_paths.index))
+eval_paths = list(Path(opts.eval_dir).glob("*.tif"))
+m = Parallel(n_jobs=opts.n_jobs)(delayed(process_input)(fn) for fn in tqdm(eval_paths))
 pd.concat(m).to_csv(save_dir / opts.fname, index=False)

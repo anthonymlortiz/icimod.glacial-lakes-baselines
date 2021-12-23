@@ -19,14 +19,14 @@ class InferOptions(BaseOptions):
 class EvalOptions(BaseOptions):
     def initialize(self, parser):
         BaseOptions.initialize(self, parser)
-        parser.set_defaults(save_dir="/datadrive/results/inference/bing_val-unet")
+        parser.set_defaults(save_dir="/datadrive/results/inference/bing-unet")
         parser.add_argument("--vector_label", type=str, default="/datadrive/snake/lakes/GL_3basins_2015.shp")
+        parser.add_argument("--eval_dir", type=str, default="/datadrive/results/inference/bing-unet")
         parser.add_argument("--buffer", type=float, default=1e-2)
         parser.add_argument("--tol", type=float, default=1e-6)
         parser.add_argument("--grid", type=int, default=20)
-        parser.add_argument("--geo_prob", type=float, default=0.6)
+        parser.add_argument("--geo_prob", type=float, default=0.95)
         parser.add_argument("--n_jobs", type=int, default=50)
-        parser.add_argument("--eval_paths", type=str, default="/datadrive/results/inference/bing_val_paths.csv")
         parser.add_argument("--fname", type=str, default="metrics.csv")
         return parser
 
